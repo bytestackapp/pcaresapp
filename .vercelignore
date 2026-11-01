@@ -1,3 +1,6 @@
 supabase/
 README.md
 .references/
+git-push.bat
+PCaresApp.bat
+serve.json
