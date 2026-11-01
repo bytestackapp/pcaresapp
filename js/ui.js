@@ -56,12 +56,15 @@
   const fmtTime = (iso) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: window.APP_CONFIG.TIMEZONE });
 
   /* ---------- toast ---------- */
+  let lastToast = { msg: '', at: 0 };
   function toast(message, type = 'info', ms = 3200) {
+    if (lastToast.msg === message && Date.now() - lastToast.at < 800) return;   // no duplicate toasts
+    lastToast = { msg: message, at: Date.now() };
     let stack = $('#toastStack');
     if (!stack) { stack = document.createElement('div'); stack.id = 'toastStack'; stack.className = 'toast-stack'; stack.setAttribute('role', 'status'); stack.setAttribute('aria-live', 'polite'); document.body.appendChild(stack); }
     const t = document.createElement('div');
     t.className = 'toast toast-' + type;
-    t.innerHTML = `${icon(type === 'error' ? 'alert' : type === 'success' ? 'check' : 'info', 18)}<span>${esc(message)}</span>`;
+    t.innerHTML = `${icon(type === 'error' || type === 'warn' ? 'alert' : type === 'success' ? 'check' : 'info', 18)}<span>${esc(message)}</span>`;
     stack.appendChild(t);
     requestAnimationFrame(() => t.classList.add('in'));
     setTimeout(() => { t.classList.remove('in'); setTimeout(() => t.remove(), 250); }, ms);
@@ -198,7 +201,8 @@
     else { btn.disabled = false; if (btn.dataset.label) btn.innerHTML = btn.dataset.label; }
   }
   function showAlert(el, msg, type = 'error') {
-    el.className = `alert alert-${type}`; el.innerHTML = `${icon(type === 'success' ? 'check' : type === 'info' ? 'info' : 'alert', 18)}<span>${esc(msg)}</span>`; el.hidden = false;
+    el.hidden = true;   // inline boxes are no longer shown; everything is a toast
+    toast(msg, type, type === 'success' ? 3200 : type === 'error' ? 5000 : 6500);
   }
   const hideAlert = (el) => { el.hidden = true; };
 
@@ -213,5 +217,46 @@
     });
   }
 
-  window.UI = { icon, esc, $, $$, debounce, initials, timeAgo, fmtTime, toast, modal, confirm, pickHospital, hospitalField, setBusy, showAlert, hideAlert, bindPasswordToggles };
+  /* shake an element (wrong entry) */
+  function shake(el) {
+    if (!el) return;
+    el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
+    const done = (ev) => { if (ev.target !== el) return; el.classList.remove('shake'); el.removeEventListener('animationend', done); };
+    el.addEventListener('animationend', done);
+  }
+
+  /* sliding pill behind tabs / segmented buttons; stretches across, then settles */
+  function pill(root, activeSel) {
+    let el = root.querySelector(':scope > .pill');
+    if (!el) { el = document.createElement('span'); el.className = 'pill'; el.setAttribute('aria-hidden', 'true'); root.prepend(el); }
+    let cur = null, timer = null;
+    function sync(animate) {
+      const a = root.querySelector(activeSel); if (!a) return;
+      const l = a.offsetLeft, w = a.offsetWidth;
+      if (!animate || !cur) {
+        el.style.transition = 'none'; el.style.left = l + 'px'; el.style.width = w + 'px';
+        void el.offsetWidth; el.style.transition = ''; cur = { l, w }; return;
+      }
+      const left = Math.min(cur.l, l), right = Math.max(cur.l + cur.w, l + w);
+      el.style.left = left + 'px'; el.style.width = (right - left) + 'px';
+      clearTimeout(timer);
+      timer = setTimeout(() => { el.style.left = l + 'px'; el.style.width = w + 'px'; }, 230);
+      cur = { l, w };
+    }
+    sync(false);
+    window.addEventListener('resize', () => sync(false));
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => sync(false));
+    return { sync };
+  }
+
+  /* wrong field: shake it and flash it red for a moment */
+  function flagInput(el) {
+    if (!el) return;
+    shake(el.closest('.input-wrap') || el);
+    el.classList.remove('input-error'); void el.offsetWidth; el.classList.add('input-error');
+    clearTimeout(el._flagT);
+    el._flagT = setTimeout(() => el.classList.remove('input-error'), 1400);
+  }
+
+  window.UI = { icon, esc, $, $$, debounce, initials, timeAgo, fmtTime, toast, modal, confirm, pickHospital, hospitalField, setBusy, showAlert, hideAlert, bindPasswordToggles, shake, pill, flagInput };
 })();

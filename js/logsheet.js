@@ -21,29 +21,28 @@
         <button class="btn btn-primary" id="addBtn">${icon('plus', 18)}<span>Add entry</span></button>
       </div>
     </div>
-    <div class="card ls-toolbar">
-      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:.5rem">
-        <label class="label" for="fType" style="margin:0">Filter by</label>
-        <select class="input" id="fType" style="width:auto;min-width:170px">
-          <option value="none">None (show all)</option>
-          <option value="hospital">Hospital</option>
-          <option value="date">Date</option>
-          <option value="both">Hospital and date</option>
-        </select>
-        <select class="input" id="fHosp" style="width:auto;min-width:220px" aria-label="Hospital" hidden></select>
-        <span id="fDates" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap" hidden>
-          <label class="label" for="fFrom" style="margin:0">From</label><input type="date" class="input" id="fFrom" style="width:auto">
-          <label class="label" for="fTo" style="margin:0">To</label><input type="date" class="input" id="fTo" style="width:auto">
-        </span>
+            <div class="card ls-toolbar">
+      <div class="tb-field">
+        <label class="label" for="fHosp">Hospital</label>
+        <select class="input" id="fHosp"></select>
       </div>
-      <div class="seg" role="tablist" aria-label="Sheet">
-        <button role="tab" data-tab="s1" class="active">Sheet 1 · Client log</button>
-        <button role="tab" data-tab="s2">Sheet 2 · Daily report</button>
+      <div class="tb-field"><label class="label" for="fFrom">From</label><input type="date" class="input" id="fFrom"></div>
+      <div class="tb-field"><label class="label" for="fTo">To</label><input type="date" class="input" id="fTo"></div>
+      <div class="tb-field">
+        <span class="label">Sheet</span>
+        <div class="seg" role="tablist" aria-label="Sheet">
+          <button role="tab" data-tab="s1" class="active">Client log</button>
+          <button role="tab" data-tab="s2">Daily report</button>
+        </div>
       </div>
-      <div class="search-box">${icon('search', 18)}<input class="input" id="search" type="search" placeholder="Search names or inquiry" aria-label="Search entries"></div>
+      <div class="tb-field tb-search">
+        <label class="label" for="search">Search</label>
+        <div class="search-box">${icon('search', 18)}<input class="input" id="search" type="search" placeholder="Search names or inquiry" aria-label="Search entries"></div>
+      </div>
+      <p class="help tb-hint" id="dateHint" hidden>Choose both From and To to filter by date.</p>
     </div>
-    <div class="stat-strip" id="stats"></div>
-    <div class="card" style="margin-top:1rem"><div class="table-wrap" id="tableWrap"></div><div id="pager"></div></div>
+    <div class="card card-pad sheet-info" id="sheetInfo" hidden></div>
+    <div class="card"><div class="table-wrap" id="tableWrap"></div><div id="pager"></div></div>
     <div class="card card-pad" style="margin-top:1rem" id="bottom"></div>`;
 
   /* ============================== data ============================== */
@@ -51,7 +50,7 @@
     if (!silent) { state.loading = true; state.error = ''; renderAll(); }
     try { state.all = (await API.entries.all()).reverse(); state.error = ''; }      // newest date first
     catch (e) { state.error = e.message; if (!silent) state.all = []; UI.toast(e.message, 'error', 6000); }
-    state.loading = false; sheetKey = null; renderAll();
+    state.loading = false; if (!silent) sheetKey = null; renderAll();
   }
 
   function hospitalsWithData() {
@@ -62,11 +61,11 @@
 
   function filtered() {
     const f = state.filter, q = state.search.trim().toLowerCase();
-    const byH = (f.type === 'hospital' || f.type === 'both') && f.hospital;
-    const byD = f.type === 'date' || f.type === 'both';
+    const byH = !!f.hospital;
+    const byD = !!(f.from && f.to);
     return state.all.filter(e => {
       if (byH && e.hospital_id !== f.hospital) return false;
-      if (byD) { if (f.from && e.entry_date < f.from) return false; if (f.to && e.entry_date > f.to) return false; }
+      if (byD && (e.entry_date < f.from || e.entry_date > f.to)) return false;
       if (q && ![e.client_name, e.member_name, e.patient_name, e.nature_of_inquiry, e.remarks, e.contact_no, e.hospital_name].join(' ').toLowerCase().includes(q)) return false;
       return true;
     });
@@ -102,24 +101,16 @@
     const pages = Math.max(1, Math.ceil(state.view.length / PAGE)); if (state.page > pages) state.page = pages;
     $('#addBtn').disabled = state.loading || !!state.error;
     $('#pdfBtn').disabled = state.loading || !!state.error;
-    renderStats(); renderTable(); renderPager(); renderBottom();
+    renderTable(); renderPager(); renderSheetInfo(); renderBottom();
   }
 
   function renderFilter() {
     const f = state.filter, hs = hospitalsWithData();
     if (f.hospital && !hs.some(h => h.id === f.hospital)) f.hospital = '';
-    $('#fType').value = f.type;
-    const showH = f.type === 'hospital' || f.type === 'both', showD = f.type === 'date' || f.type === 'both';
-    const sel = $('#fHosp'); sel.hidden = !showH;
-    sel.innerHTML = '<option value="">Select a hospital</option>' + hs.map(h => `<option value="${esc(h.id)}" ${h.id === f.hospital ? 'selected' : ''}>${esc(h.name)}</option>`).join('');
-    $('#fDates').hidden = !showD;
+    $('#fHosp').innerHTML = '<option value="">All hospitals</option>' + hs.map(h => `<option value="${esc(h.id)}" ${h.id === f.hospital ? 'selected' : ''}>${esc(h.name)}</option>`).join('');
     $('#fFrom').value = f.from; $('#fTo').value = f.to;
-  }
-
-  function renderStats() {
-    const s = L.computeSummary(state.view);
-    const items = [['Entries', s.total, 'accent'], ['Inpatient', s.totals.inpatient, 'blue'], ['Outpatient', s.totals.outpatient, 'teal'], ['Walk-in', s.walkIn, ''], ['PPFF', s.ppff, '']];
-    $('#stats').innerHTML = items.map(([l, v, c]) => `<div class="stat ${c}"><b>${state.loading ? '–' : v}</b><span>${l}</span></div>`).join('');
+    $('#fFrom').max = f.to || ''; $('#fTo').min = f.from || '';
+    $('#dateHint').hidden = !!f.from === !!f.to;
   }
 
   const dash = '<span class="dash">—</span>';
@@ -127,7 +118,7 @@
   const catBadge = (c) => `<span class="badge ${c === 'NM' ? '' : 'badge-green'}" title="${esc((L.catByCode(c) || {}).label || '')}">${esc(c)}</span>`;
   const svcBadge = (k) => ({ at_post: '<span class="badge badge-blue">At Post</span>', ward_class: '<span class="badge badge-teal">Ward Class</span>', outpatient: '<span class="badge badge-green">Outpatient</span>', none: '<span class="badge">Inquiry only</span>' }[k] || '');
   const tick = `<span class="tick">${icon('check', 18)}</span>`;
-  const filterActive = () => state.filter.type !== 'none' || state.search.trim();
+  const filterActive = () => state.filter.hospital || state.filter.from || state.filter.to || state.search.trim();
 
   function actionsCell(e, no) {
     return `<td class="actions"><button class="icon-btn" data-act="edit" data-id="${e.id}" aria-label="Edit entry ${no}" title="Edit">${icon('edit', 18)}</button><button class="icon-btn danger" data-act="del" data-id="${e.id}" aria-label="Delete entry ${no}" title="Delete">${icon('trash', 18)}</button></td>`;
@@ -161,7 +152,7 @@
         ${td('PhilHealth member', esc(e.member_name), '', e.member_name)}
         ${td('Patient', esc(e.patient_name), '', e.patient_name)}
         ${td('Contact', esc(e.contact_no), 'nowrap', e.contact_no)}
-        ${td('Signature', e.has_signature ? `<span data-sig="${e.id}" class="muted small">…</span>` : '', '', e.has_signature ? 'y' : '')}
+        ${td('Signature', e.has_signature ? (sigCache.get(e.id) ? `<img class="sig-thumb" src="${sigCache.get(e.id)}" alt="Client signature">` : `<span data-sig="${e.id}" class="muted small">…</span>`) : '', '', e.has_signature ? 'y' : '')}
         ${td('Patient is', e.patient_is === 'member' ? '<span class="badge">Member</span>' : e.patient_is === 'dependent' ? '<span class="badge">Dependent</span>' : '', '', e.patient_is)}
         ${td('Admission date', e.admission_date ? esc(L.fmtDate(e.admission_date)) : '', 'nowrap', e.admission_date)}
         ${td('PCF1 reason', e.pcf1_reason ? `<span class="badge badge-amber">${esc((L.PCF1_REASONS.find(r => r.key === e.pcf1_reason) || {}).label || '')}</span>` : '', '', e.pcf1_reason)}
@@ -238,58 +229,54 @@
       <tr class="total"><th class="rowhead">Total</th>${L.PCF1_REASONS.map(r => `<td>${L.MEMBER_CODES.reduce((a, c) => a + s.pcf1[r.key][c], 0)}</td>`).join('')}<td>${grand}</td></tr></tbody></table></div></div>`;
   }
 
+    function currentGroup() { const gs = groupsOf(state.view); return gs.length === 1 ? gs[0] : null; }
+
+  function syncSheetRow(g) {
+    if (g && sheetKey !== g.key) {
+      const key = g.key; sheetKey = key; sheetRow = null;
+      API.sheets.get(g.hospital_id, g.date).then(r => { if (sheetKey === key) { sheetRow = r; renderSheetInfo(); } }).catch(() => {});
+    }
+  }
+
+  /* Control no. and OPD class details: shown above the table on the Daily report view */
+  function renderSheetInfo() {
+    const box = $('#sheetInfo');
+    if (state.tab !== 's2' || state.loading || state.error || !state.all.length) { box.hidden = true; box.innerHTML = ''; return; }
+    box.hidden = false;
+    const g = currentGroup();
+    if (!g) {
+      box.innerHTML = `<div class="sheet-info-note">${icon('info', 18)}<span>To set the control number and OPD class details, filter to <strong>one hospital</strong> and <strong>one date</strong> (same From and To).</span></div>`;
+      return;
+    }
+    syncSheetRow(g);
+    const sh = (sheetKey === g.key && sheetRow) || {};
+    const [cy, cm, cs] = (sh.control_no || (g.date.slice(0, 7) + '-')).split('-');
+    box.innerHTML = `
+      <div class="sheet-info-head"><strong>${esc(g.hospital)}</strong><span class="muted small">${esc(L.fmtDate(g.date, 'long'))}</span><span class="saved-flag" id="savedFlag">Saved</span></div>
+      <div class="sheet-info-grid">
+        <div class="field"><label class="label" for="cY">Control no.</label>
+          <div class="ctrl-row"><input class="input" id="cY" value="${esc(cy || '')}" maxlength="4" inputmode="numeric" aria-label="Year" style="width:5.2rem">–
+            <input class="input" id="cM" value="${esc(cm || '')}" maxlength="2" inputmode="numeric" aria-label="Month" style="width:3.4rem">–
+            <input class="input" id="cS" value="${esc(cs || '')}" maxlength="4" inputmode="numeric" aria-label="Series no." style="width:4.6rem"></div>
+          <span class="help">Year · Month · Series no.</span></div>
+        <div class="field"><label class="label" for="mOpdN">No. of times OPD class is conducted <span class="muted small">(if applicable)</span></label>
+          <input class="input" id="mOpdN" type="number" min="0" inputmode="numeric" value="${sh.opd_class_count ?? ''}"></div>
+        <div class="field"><label class="label" for="mOpdC">No. of clients served during OPD class <span class="muted small">(if applicable)</span></label>
+          <input class="input" id="mOpdC" type="number" min="0" inputmode="numeric" value="${sh.opd_class_clients ?? ''}"></div>
+      </div>`;
+    const ctrl = () => saveMeta(g, { control_no: [$('#cY').value.trim(), $('#cM').value.trim().padStart(2, '0'), $('#cS').value.trim().padStart(3, '0')].join('-') });
+    ['cY', 'cM', 'cS'].forEach(id => $('#' + id).addEventListener('change', ctrl));
+    const num = (id) => { const v = $(id).value; return v === '' ? null : Math.max(0, parseInt(v, 10) || 0); };
+    $('#mOpdN').addEventListener('change', () => saveMeta(g, { opd_class_count: num('#mOpdN') }));
+    $('#mOpdC').addEventListener('change', () => saveMeta(g, { opd_class_clients: num('#mOpdC') }));
+  }
+
+  /* Client log view: PCF1 issuance table only. The Daily report view has no bottom block. */
   function renderBottom() {
     const box = $('#bottom');
-    if (state.loading) { box.innerHTML = '<div class="skeleton" style="height:160px"></div>'; return; }
-    if (state.error || !state.all.length) { box.innerHTML = ''; box.hidden = true; return; }
+    if (state.tab !== 's1' || state.error || (!state.loading && !state.all.length)) { box.innerHTML = ''; box.hidden = true; return; }
     box.hidden = false;
-    const s = L.computeSummary(state.view), groups = groupsOf(state.view), g = groups.length === 1 ? groups[0] : null;
-    if (g && sheetKey !== g.key) { const key = g.key; sheetKey = key; sheetRow = null; API.sheets.get(g.hospital_id, g.date).then(r => { if (sheetKey === key) { sheetRow = r; renderBottom(); } }).catch(() => {}); }
-    const sh = (g && sheetKey === g.key && sheetRow) || {};
-    const hint = `<p class="help" style="margin:0 0 1rem">The totals below cover the ${state.view.length} ${state.view.length === 1 ? 'entry' : 'entries'} shown. To edit the P-CARES name, control number and OPD class details, filter to <strong>one hospital and one date</strong>.</p>`;
-    if (state.tab === 's1') {
-      box.innerHTML = `
-        ${g ? `<div class="sheet-meta" style="margin-top:0">
-          <div class="field"><label class="label" for="mPcare">Name of P-CARES</label><input class="input" id="mPcare" value="${esc(sh.pcare_name || '')}" placeholder="${esc(profile.full_name)}"></div>
-          <div class="field"><label class="label">Date</label><input class="input" value="${esc(L.fmtDate(g.date, 'long'))}" disabled></div>
-          <div class="field" style="align-self:end"><span class="saved-flag" id="savedFlag">Saved</span></div>
-        </div>` : hint}
-        <div class="sheet-grid">
-          ${pcf1HTML(s)}
-          <div class="sum-block" style="margin-top:0"><h4>Legend</h4><dl class="legend">${L.CATEGORIES.map(c => `<dt>${esc(c.code)}</dt><dd>${esc(c.label)}</dd>`).join('')}</dl></div>
-        </div>`;
-      if (g) $('#mPcare').addEventListener('change', (e) => saveMeta(g, { pcare_name: e.target.value.trim() }));
-    } else {
-      const [cy, cm, cs] = (sh.control_no || (g ? g.date.slice(0, 7) + '-' : '--')).split('-');
-      box.innerHTML = `
-        ${g ? `<div class="sheet-meta" style="margin-top:0">
-          <div class="field"><label class="label">Name of health care institution</label><input class="input" value="${esc(g.hospital)}" disabled></div>
-          <div class="field"><label class="label" for="cY">Control no.</label>
-            <div class="ctrl-row"><input class="input" id="cY" value="${esc(cy || '')}" maxlength="4" inputmode="numeric" aria-label="Year" style="width:5.2rem">–
-              <input class="input" id="cM" value="${esc(cm || '')}" maxlength="2" inputmode="numeric" aria-label="Month" style="width:3.4rem">–
-              <input class="input" id="cS" value="${esc(cs || '')}" maxlength="4" inputmode="numeric" aria-label="Series no." style="width:4.6rem"></div>
-            <span class="help">Year · Month · Series no.</span></div>
-          <div class="field" style="align-self:end"><span class="saved-flag" id="savedFlag">Saved</span></div>
-        </div>` : hint}
-        <div class="sheet-grid">
-          <div>${summaryHTML(s)}</div>
-          <div class="sum-block" style="margin-top:1rem"><h4>Totals</h4><div class="side-metrics">
-            ${g ? `<div class="metric"><label for="mOpdN">No. of times OPD class is conducted <small class="muted">(if applicable)</small></label><input class="input" id="mOpdN" type="number" min="0" inputmode="numeric" value="${sh.opd_class_count ?? ''}"></div>
-            <div class="metric"><label for="mOpdC">No. of clients served during OPD class <small class="muted">(if applicable)</small></label><input class="input" id="mOpdC" type="number" min="0" inputmode="numeric" value="${sh.opd_class_clients ?? ''}"></div>` : ''}
-            <div class="metric"><span>Total inpatient clients served <small class="muted">(At Post + Ward Class)</small></span><b>${s.totals.inpatient}</b></div>
-            <div class="metric"><span>Total outpatient clients</span><b>${s.totals.outpatient}</b></div>
-            <div class="metric"><span>Total walk-in clients</span><b>${s.walkIn}</b></div>
-            <div class="metric"><span>Total PPFF administered</span><b>${s.ppff}</b></div>
-          </div></div>
-        </div>`;
-      if (g) {
-        const ctrl = () => saveMeta(g, { control_no: [$('#cY').value.trim(), $('#cM').value.trim().padStart(2, '0'), $('#cS').value.trim().padStart(3, '0')].join('-') });
-        ['cY', 'cM', 'cS'].forEach(id => $('#' + id).addEventListener('change', ctrl));
-        const num = (id) => { const v = $(id).value; return v === '' ? null : Math.max(0, parseInt(v, 10) || 0); };
-        $('#mOpdN').addEventListener('change', () => saveMeta(g, { opd_class_count: num('#mOpdN') }));
-        $('#mOpdC').addEventListener('change', () => saveMeta(g, { opd_class_clients: num('#mOpdC') }));
-      }
-    }
+    box.innerHTML = state.loading ? '<div class="skeleton" style="height:160px"></div>' : pcf1HTML(L.computeSummary(state.view));
   }
 
   /* ============================== entry form ============================== */
@@ -337,7 +324,7 @@
         </div>
         <div class="form-section"><h4>Classification</h4>
           <div class="form-grid">
-            <div class="field span-2"><label class="label" for="fCat">Member category <span class="req">*</span></label>
+            <div class="field span-2"><div class="label-row"><label class="label" for="fCat">Member category <span class="req">*</span></label><button type="button" class="info-btn" id="legendBtn" aria-label="Show member category legend" title="Member category legend">${icon('info', 18)}</button></div>
               <select class="input" id="fCat"><option value="">Select category</option>${L.CATEGORIES.map(c => `<option value="${esc(c.code)}" ${e.member_category === c.code ? 'selected' : ''}>${esc(c.code)} – ${esc(c.label)}</option>`).join('')}</select></div>
             <div class="field"><label class="label" for="fSt">Membership status <span class="req" id="stReq">*</span></label>
               <select class="input" id="fSt"><option value="">Select status</option>
@@ -417,8 +404,17 @@
     });
   }
 
+  function openLegend() {
+    UI.modal({
+      title: 'Member category legend', size: 'sm',
+      body: `<dl class="legend">${L.CATEGORIES.map(c => `<dt>${esc(c.code)}</dt><dd>${esc(c.label)}</dd>`).join('')}</dl>`,
+      footer: [{ label: 'Close', className: 'btn-primary' }]
+    });
+  }
+
   function wireForm(h, e) {
     const el = h.el, q = (s) => $(s, el);
+    if (!h._legend) { h._legend = true; q('#legendBtn').addEventListener('click', openLegend); }
     if (!h._hf) {
       h._hf = UI.hospitalField(q('#fHosp'));
       q('#fHospChev').innerHTML = icon('chevronDown', 18);
@@ -496,8 +492,9 @@
     const box = $('#entryAlert', h.el); box.hidden = true;
     const p = readForm(h), bad = validate(p);
     if (bad) {
-      UI.showAlert(box, bad[1]); h.body.scrollTo({ top: 0, behavior: 'smooth' });
-      if (bad[0]) $('#' + bad[0], h.el).focus();
+      UI.showAlert(box, bad[1]);
+      const fid = bad[0] || (bad[1].indexOf('category') > -1 ? 'fCat' : 'fSt');
+      const fel = $('#' + fid, h.el); fel.focus(); UI.flagInput(fel);
       return false;
     }
     setBusy(btn, true, 'Saving');
@@ -517,6 +514,7 @@
     setBusy(btn, false);
   }
 
+    const wait = (ms) => new Promise(r => setTimeout(r, ms));
   async function delEntry(id) {
     const e = state.all.find(x => x.id === id); if (!e) return;
     const ok = await UI.confirm({
@@ -524,8 +522,30 @@
       message: `<p><strong>${esc(e.client_name)}</strong> (${esc(L.fmtDate(e.entry_date, 'long'))}, ${esc(e.hospital_name || '')}) will be removed. This cannot be undone. Your latest backup still has it.</p>`
     });
     if (!ok) return;
-    try { await API.entries.remove(id); sigCache.delete(id); await load(true); UI.toast('Entry deleted.', 'success'); }
-    catch (err) { UI.toast(err.message, 'error', 5000); }
+    try { await API.entries.remove(id); } catch (err) { UI.toast(err.message, 'error', 5000); return; }
+    sigCache.delete(id);
+    const y = window.scrollY, wrap = $('#tableWrap'), sx = wrap.scrollLeft, card = wrap.parentElement;
+    const btn = $(`[data-act="del"][data-id="${id}"]`), tr = btn && btn.closest('tr');
+    if (tr) {
+      const h0 = card.offsetHeight, rowH = tr.offsetHeight;
+      const after = []; let n = tr; while ((n = n.nextElementSibling)) after.push(n);
+      tr.classList.add('row-out'); await wait(220);
+      tr.remove();
+      const total = state.view.length - 1, start = (state.page - 1) * PAGE;
+      $$('tbody tr', wrap).forEach((r, i) => { const c = r.querySelector('.no'); if (c) c.textContent = total - (start + i); });
+      const h1 = card.offsetHeight;
+      card.style.height = h0 + 'px'; card.style.overflow = 'hidden';
+      after.forEach(r => { r.style.transition = 'none'; r.style.transform = `translateY(${rowH}px)`; });
+      void card.offsetHeight;
+      card.style.transition = 'height .32s cubic-bezier(.4,0,.2,1)'; card.style.height = h1 + 'px';
+      after.forEach(r => { r.style.transition = 'transform .32s cubic-bezier(.4,0,.2,1)'; r.style.transform = ''; });
+      await wait(340);
+      card.style.height = ''; card.style.transition = ''; card.style.overflow = '';
+    }
+    state.all = state.all.filter(x => x.id !== id);
+    renderAll();
+    $('#tableWrap').scrollLeft = sx; window.scrollTo(0, y);
+    UI.toast('Entry deleted.', 'success');
   }
 
   /* ============================== export ============================== */
@@ -571,7 +591,7 @@
       const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
       const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 4000);
-      sheetKey = null; renderBottom();
+      sheetKey = null; renderSheetInfo(); renderBottom();
       UI.toast('PDF downloaded.', 'success');
     } catch (err) { UI.showAlert(box, err.message); setBusy(btn, false); return false; }
     setBusy(btn, false);
@@ -579,15 +599,17 @@
 
   /* ============================== events ============================== */
   const resetPage = () => { state.page = 1; renderAll(); };
-  $('#fType').addEventListener('change', (e) => { state.filter.type = e.target.value; resetPage(); });
   $('#fHosp').addEventListener('change', (e) => { state.filter.hospital = e.target.value; resetPage(); });
   $('#fFrom').addEventListener('change', (e) => { state.filter.from = e.target.value; resetPage(); });
   $('#fTo').addEventListener('change', (e) => { state.filter.to = e.target.value; resetPage(); });
   $('#addBtn').addEventListener('click', () => openEntryModal());
   $('#pdfBtn').addEventListener('click', openExportModal);
+  const segPill = UI.pill($('.seg'), '[data-tab].active');
   $$('.seg [data-tab]').forEach(b => b.addEventListener('click', () => {
+    if (state.tab === b.dataset.tab) return;
     state.tab = b.dataset.tab; $$('.seg [data-tab]').forEach(x => { x.classList.toggle('active', x === b); x.setAttribute('aria-selected', String(x === b)); });
-    renderTable(); renderBottom();
+    segPill.sync(true);
+    renderTable(); renderSheetInfo(); renderBottom();
   }));
   $('#search').addEventListener('input', UI.debounce((e) => { state.search = e.target.value; resetPage(); }, 200));
   $('#tableWrap').addEventListener('click', (e) => {

@@ -17,13 +17,27 @@
     } catch (e) { UI.toast(e.message, 'error', 5000); }
   }
 
-  function draw() {
+    let tabPill = null;
+  const tabsHTML = () => TABS.map(([k, l, ic]) => `<button class="tab" role="tab" data-tab="${k}">${icon(ic, 18)}<span>${l}</span><span class="nav-count" data-count="${k}" hidden></span></button>`).join('');
+  function markTabs() {
     const pending = S.profiles.filter(p => p.status === 'pending').length;
-    root.innerHTML = `
-      <div class="tabs" role="tablist">${TABS.map(([k, l, ic]) => `<button class="tab ${k === S.tab ? 'active' : ''}" role="tab" data-tab="${k}">${icon(ic, 18)}<span>${l}</span>${k === 'approvals' && pending ? `<span class="nav-count">${pending}</span>` : ''}</button>`).join('')}</div>
-      <div id="tabBody"></div>`;
-    $$('.tab', root).forEach(b => b.addEventListener('click', async () => { S.tab = b.dataset.tab; history.replaceState(null, '', '#' + S.tab); if (S.tab === 'audit') await loadAudit(); draw(); }));
-    ({ approvals, users, hospitals, settings, audit })[S.tab]($('#tabBody'));
+    $$('.tab', root).forEach(b => { const on = b.dataset.tab === S.tab; b.classList.toggle('active', on); b.setAttribute('aria-selected', String(on)); });
+    const c = $('[data-count="approvals"]', root); if (c) { c.hidden = !pending; c.textContent = pending; }
+  }
+  function drawBody() { ({ approvals, users, hospitals, settings, audit })[S.tab]($('#tabBody')); }
+  function draw() {
+    if (!$('.tabs', root)) {
+      root.innerHTML = `<div class="tabs" role="tablist">${tabsHTML()}</div><div id="tabBody"></div>`;
+      $$('.tab', root).forEach(b => b.addEventListener('click', async () => {
+        if (b.dataset.tab === S.tab) return;
+        S.tab = b.dataset.tab; history.replaceState(null, '', '#' + S.tab);
+        if (S.tab === 'audit') await loadAudit();
+        markTabs(); tabPill.sync(true); drawBody();
+      }));
+      tabPill = UI.pill($('.tabs', root), '.tab.active');
+    }
+    markTabs(); tabPill.sync(false);
+    drawBody();
   }
 
   /* ---------- approvals ---------- */

@@ -63,6 +63,7 @@
     UI.bindPasswordToggles(root);
 
     $('#editBtn').addEventListener('click', openEdit);
+    const themePill = UI.pill($('#themeSeg'), '.active');
 
     $('#fsBackup').addEventListener('click', async (e) => {
       const b = e.currentTarget; setBusy(b, true, 'Backing up');
@@ -88,6 +89,7 @@
       try { localStorage.setItem('ls_theme', b.dataset.t); } catch (x) {}
       window.__applyTheme();
       document.querySelectorAll('#themeSeg button').forEach(x => x.classList.toggle('active', x === b));
+      themePill.sync(true);
       const tb = $('#themeBtn'); if (tb) tb.innerHTML = icon(document.documentElement.dataset.theme === 'dark' ? 'sun' : 'moon');
     });
     $('#pwForm').addEventListener('submit', async (e) => {

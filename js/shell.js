@@ -111,7 +111,7 @@
     document.body.prepend(app); document.body.prepend(banner);
     $('.main-wrap', app).appendChild(main);
     const foot = document.createElement('footer'); foot.className = 'app-foot';
-    foot.innerHTML = `<span>${esc(C.APP_NAME)}</span>`; $('.main-wrap', app).appendChild(foot);
+    foot.innerHTML = `<strong class="foot-name">PCares App · Version ${esc(C.APP_VERSION || '1.0.0')}</strong><span>© ${new Date().getFullYear()} Bytestack. All Rights Reserved.</span>`; $('.main-wrap', app).appendChild(foot);
   }
 
   function bindShell() {

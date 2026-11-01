@@ -23,7 +23,7 @@
       <section class="card"><div class="card-head"><h3>Last 7 days</h3><span class="muted small">Entries per day</span></div><div class="card-body" id="week"><div class="skeleton" style="height:170px"></div></div></section>
       <section class="card"><div class="card-head"><h3>Today by member category</h3></div><div class="card-body" id="cats"><div class="skeleton" style="height:170px"></div></div></section>
     </div>
-    <section class="card" style="margin-top:1rem"><div class="card-head"><h3>Latest entries today</h3><a class="link-btn" href="${C.PATHS.logsheet}">View all</a></div><div class="card-body" id="recent"></div></section>`;
+  `;
 
   const notes = [];
   if (settings.announcement) notes.push(`<div class="alert alert-info">${icon('info', 18)}<span>${esc(settings.announcement)}</span></div>`);
@@ -52,12 +52,4 @@
   $('#cats').innerHTML = todays.length ? `<div class="hbars">${L.CAT_CODES.filter(c => cc[c]).map(c =>
     `<div class="hbar"><b title="${esc(L.catByCode(c).label)}">${esc(c)}</b><div class="hbar-track"><div class="hbar-fill" style="width:${cc[c] / cmax * 100}%"></div></div><em>${cc[c]}</em></div>`).join('')}</div>`
     : `<div class="empty-mini">${icon('clipboard', 22)}<p>No entries yet today.</p></div>`;
-
-  // recent
-  const latest = todays.slice(-6).reverse();
-  $('#recent').innerHTML = latest.length ? `<ul class="recent">${latest.map(e => `
-    <li><span class="badge ${e.member_category === 'NM' ? '' : 'badge-green'}">${esc(e.member_category)}</span>
-      <span class="who"><strong>${esc(e.client_name)}</strong><small>${esc(e.nature_of_inquiry || L.serviceLabel(e.service))}</small></span>
-      <time datetime="${e.created_at}">${esc(UI.fmtTime(e.created_at))}</time></li>`).join('')}</ul>`
-    : `<div class="empty-mini"><p>Entries you add will show up here.</p></div>`;
 })();

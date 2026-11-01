@@ -38,8 +38,8 @@
     e.preventDefault();
     hideAlert(alertBox);
     const username = $('#username').value.trim(), password = $('#password').value, h = hospital.get();
-    if (!username || !password) return showAlert(alertBox, 'Enter your username and password.');
-    if (!h) return showAlert(alertBox, 'Select your hospital.');
+    if (!username || !password) { if (!username) UI.flagInput($('#username')); if (!password) UI.flagInput($('#password')); return showAlert(alertBox, 'Enter your username and password.'); }
+    if (!h) { UI.flagInput($('#hospitalBtn')); return showAlert(alertBox, 'Select your hospital.'); }
     const btn = $('#loginBtn'); setBusy(btn, true, 'Signing in');
     try {
       const user = await API.signIn(username, password);
@@ -54,6 +54,7 @@
       location.replace(C.PATHS.dashboard);
     } catch (err) {
       showAlert(alertBox, err.message);
+      UI.flagInput($('#password'));
     } finally { setBusy(btn, false); }
   });
 
