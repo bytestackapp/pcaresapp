@@ -1,0 +1,12 @@
+# Never upload patient data or local files
+data/
+backup/
+*.db
+*.db-wal
+*.db-shm
+node_modules/
+.vercel/
+*.log
+Thumbs.db
+desktop.ini
+.references/

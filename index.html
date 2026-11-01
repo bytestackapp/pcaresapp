@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>PCaresApp</title>
+  <meta name="theme-color" content="#FFFFFF">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/image/logo.png">
+  <link rel="stylesheet" href="/css/global.css">
+  <style>
+    #splashOverlay {
+      position: fixed; inset: 0; z-index: 9999; overflow: hidden;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 0 1.5rem 120px;
+      background: radial-gradient(900px 600px at 50% 35%, #FFFFFF, #F3F8F1 75%);
+      transition: opacity .4s ease;
+    }
+    #splashOverlay.hide { opacity: 0; pointer-events: none; }
+    #splashOverlay::before, #splashOverlay::after {
+      content: ''; position: absolute; left: -90px; border-radius: 40px; transform: rotate(-45deg);
+    }
+    #splashOverlay::before { top: 50px; width: 380px; height: 70px; background: rgba(112, 191, 69, .16); }
+    #splashOverlay::after { top: 140px; width: 380px; height: 54px; background: rgba(13, 114, 186, .08); }
+
+    .sp-center { position: relative; z-index: 2; text-align: center; animation: spIn .8s ease both; margin-top: -80px; }
+    @keyframes spIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+    .sp-logo { display: block; margin: 0 auto; width: clamp(230px, 62vw, 360px); height: auto; }
+    .sp-cares { display: block; margin: 1rem auto 0; width: clamp(200px, 54vw, 300px); height: auto; }
+    .sp-loader { margin-top: 12rem; }
+    .sp-loader .dots { margin-bottom: .6rem; }
+
+    .sp-waves { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 26vh; min-height: 140px; z-index: 1; }
+    .sp-version {
+      position: absolute; left: 0; width: 100%; bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+      text-align: center; font-size: .75rem; line-height: 1.5; letter-spacing: .04em;
+      color: rgba(255, 255, 255, .9); z-index: 3;
+    }
+  </style>
+</head>
+<body class="splash-body public">
+  <div id="splashOverlay" aria-busy="true">
+    <div class="sp-center">
+      <img id="splashLogo" class="sp-logo" src="/image/logo.png" alt="PhilHealth">
+      <img id="splashCares" class="sp-cares" src="/image/phcares-logo.png" alt="PhilHealth Cares">
+      <div class="sp-loader">
+        <div class="dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="splash-loading" role="status">Loading</div>
+      </div>
+    </div>
+
+    <svg class="sp-waves" viewBox="0 0 1440 320" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="wBlue" x1="0" x2="1"><stop offset="0" stop-color="#0D72BA"/><stop offset="1" stop-color="#00A89E"/></linearGradient>
+      </defs>
+      <path d="M0 150 C 280 250 520 280 820 200 C 1060 135 1250 80 1440 90 L1440 320 L0 320 Z" fill="#70BF45"/>
+      <path d="M0 270 C 330 300 600 300 900 230 C 1120 180 1300 120 1440 150 L1440 320 L0 320 Z" fill="url(#wBlue)" opacity=".95"/>
+      <path d="M0 320 C 500 320 900 310 1120 260 C 1260 228 1360 190 1440 200 L1440 320 Z" fill="#081F3F"/>
+    </svg>
+
+    <div class="sp-version">
+      <div id="splashVersion"></div>
+      <div>&copy; <span id="splashYear">2026</span> Bytestack. All Rights Reserved.</div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/splash.js"></script>
+</body>
+</html>

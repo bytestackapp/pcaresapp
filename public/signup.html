@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Create account · LogSheet</title>
+  <meta name="theme-color" content="#3B8526">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/image/logo.png">
+  <link rel="stylesheet" href="/css/global.css">
+  <script src="/js/theme.js"></script>
+</head>
+<body class="public">
+  <main class="auth-page">
+    <div class="auth-card wide">
+      <div class="auth-brand">
+        <img src="/image/logo.png" alt="" id="brandLogo">
+        <h1>Create your account</h1>
+        <p>An administrator will review your request before you can sign in.</p>
+      </div>
+
+      <section id="panelForm">
+        <a class="back-link" href="/public/login.html" id="backLink"></a>
+        <div id="signupAlert" class="alert" hidden></div>
+        <form id="signupForm" novalidate>
+          <div class="form-grid">
+            <div class="field">
+              <label class="label" for="fullName">Full name <span class="req">*</span></label>
+              <input class="input" id="fullName" autocomplete="name" placeholder="First and last name" required>
+            </div>
+            <div class="field">
+              <label class="label" for="suUsername">Username <span class="req">*</span></label>
+              <input class="input" id="suUsername" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="e.g. maria.santos" required>
+            </div>
+            <div class="field span-2">
+              <label class="label" for="suEmail">Email <span class="req">*</span></label>
+              <input class="input" id="suEmail" type="email" autocomplete="email" placeholder="you@example.com" required>
+            </div>
+            <div class="field">
+              <label class="label" for="position">Position <span class="muted small">(optional)</span></label>
+              <input class="input" id="position" placeholder="e.g. P-CARES Officer">
+            </div>
+            <div class="field">
+              <label class="label" for="contactNo">Contact number <span class="muted small">(optional)</span></label>
+              <input class="input" id="contactNo" type="tel" autocomplete="tel" placeholder="09XX XXX XXXX">
+            </div>
+            <div class="field">
+              <label class="label" for="suPassword">Password <span class="req">*</span></label>
+              <div class="input-wrap">
+                <input class="input" id="suPassword" type="password" autocomplete="new-password" placeholder="At least 8 characters" required>
+                <button type="button" class="toggle-btn" data-pw-toggle="suPassword" aria-label="Show password"></button>
+              </div>
+              <div class="pw-meter" aria-hidden="true"><i id="pwBar"></i></div>
+            </div>
+            <div class="field">
+              <label class="label" for="suConfirm">Confirm password <span class="req">*</span></label>
+              <div class="input-wrap">
+                <input class="input" id="suConfirm" type="password" autocomplete="new-password" placeholder="Re-enter password" required>
+                <button type="button" class="toggle-btn" data-pw-toggle="suConfirm" aria-label="Show password"></button>
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-block" id="signupBtn" type="submit">Submit for approval</button>
+        </form>
+      </section>
+
+      <section id="panelDone" class="success-panel" hidden>
+        <div class="tick-big" id="doneIcon"></div>
+        <h2 style="font-size:1.25rem;margin-bottom:.4rem">Request submitted</h2>
+        <p class="muted">Your account is waiting for administrator approval. You will be able to sign in as soon as it is approved.</p>
+        <a class="btn btn-primary btn-block" href="/public/login.html">Back to sign in</a>
+      </section>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="/js/config.js"></script>
+  <script src="/js/logic.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/signup.js"></script>
+</body>
+</html>
