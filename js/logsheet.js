@@ -6,6 +6,7 @@
   const C = APP_CONFIG, L = Logic, { $, $$, esc, icon, setBusy } = UI;
   const today = () => L.todayStr();
   const PAGE = 50;
+  const INQUIRIES = ['DOC REQUIREMENT', 'ADD DEPENDENT', 'PHIC ELIGIBILITY'];
   const state = { tab: 's1', all: [], view: [], page: 1, search: '', loading: true, error: '', filter: { type: 'none', hospital: '', from: '', to: '' } };
   const sigCache = new Map();
   let sheetKey = null, sheetRow = null;
@@ -143,9 +144,8 @@
       $('#retryBtn').addEventListener('click', () => load()); return;
     }
     if (!state.all.length) {
-      wrap.innerHTML = `<div class="empty">${icon('clipboard')}<h4>No entries yet</h4><p>Add the first client. Totals and the summary fill in as you go.</p>
-        <button class="btn btn-primary" id="emptyAdd">${icon('plus', 18)}<span>Add entry</span></button></div>`;
-      $('#emptyAdd').addEventListener('click', () => openEntryModal()); return;
+      wrap.innerHTML = `<div class="empty">${icon('clipboard')}<h4>No entries yet</h4><p>Add the first client. Totals and the summary fill in as you go.</p></div>`;
+      return;
     }
     if (!state.view.length) {
       wrap.innerHTML = `<div class="empty">${icon('search')}<h4>No matches</h4><p>No entry matches your filter or search.</p>${filterActive() ? '<button class="btn btn-ghost" id="clearFilter">Clear filter and search</button>' : ''}</div>`;
@@ -155,7 +155,7 @@
     const start = (state.page - 1) * PAGE;
     const rows = state.view.slice(start, start + PAGE).map((e, i) => ({ e, no: state.view.length - (start + i) }));
     if (state.tab === 's1') {
-      wrap.innerHTML = `<table class="tbl stack ls-table"><thead><tr><th>No.</th><th>Date entered</th><th>Hospital</th><th>Name of client</th><th>Name of PhilHealth member</th><th>Name of patient</th><th>Contact</th><th>Signature</th><th>Patient is</th><th>Admission date</th><th>PCF1</th><th></th></tr></thead><tbody>${rows.map(({ e, no }) => `<tr>
+      wrap.innerHTML = `<table class="tbl ls-table"><thead><tr><th>No.</th><th>Date entered</th><th>Hospital</th><th>Name of client</th><th>Name of PhilHealth member</th><th>Name of patient</th><th>Contact</th><th>Signature</th><th>Patient is</th><th>Admission date</th><th>PCF1</th><th></th></tr></thead><tbody>${rows.map(({ e, no }) => `<tr>
         ${noCell(no)}${dateCell(e)}${hospCell(e)}
         ${td('Client', esc(e.client_name), 'name', e.client_name)}
         ${td('PhilHealth member', esc(e.member_name), '', e.member_name)}
@@ -168,7 +168,7 @@
         ${actionsCell(e, no)}</tr>`).join('')}</tbody></table>`;
       loadSigs();
     } else {
-      wrap.innerHTML = `<table class="tbl stack ls-table"><thead><tr><th>No.</th><th>Date entered</th><th>Hospital</th><th>Name of client</th><th>Category</th><th>Status</th><th>Nature of inquiry</th><th>Service</th><th>Walk-in</th><th>PPFF</th><th>Remarks</th><th></th></tr></thead><tbody>${rows.map(({ e, no }) => `<tr>
+      wrap.innerHTML = `<table class="tbl ls-table"><thead><tr><th>No.</th><th>Date entered</th><th>Hospital</th><th>Name of client</th><th>Category</th><th>Status</th><th>Nature of inquiry</th><th>Service</th><th>Walk-in</th><th>PPFF</th><th>Remarks</th><th></th></tr></thead><tbody>${rows.map(({ e, no }) => `<tr>
         ${noCell(no)}${dateCell(e)}${hospCell(e)}
         ${td('Client', esc(e.client_name), 'name', e.client_name)}
         ${td('Category', catBadge(e.member_category), '', e.member_category)}
@@ -295,11 +295,12 @@
   /* ============================== entry form ============================== */
   function formHTML(e) {
     const chk = (cond) => cond ? 'checked' : '';
-    const inquiries = [...new Set(state.all.map(x => x.nature_of_inquiry).filter(Boolean))].slice(0, 100);
+    const inqList = (!e.nature_of_inquiry || INQUIRIES.includes(e.nature_of_inquiry)) ? INQUIRIES : [e.nature_of_inquiry, ...INQUIRIES];
+    const services = L.SERVICES.filter(sv => sv.key !== 'none');
     return `
       <div id="entryAlert" class="alert" hidden></div>
       <form id="entryForm" novalidate autocomplete="off">
-        <div class="form-section"><h4>Where and when</h4><span class="help">The hospital where you met the client, and the date of the entry</span>
+        <div class="form-section"><h4>Where and when</h4>
           <div class="form-grid">
             <div class="field"><span class="label" id="fHospLabel">Hospital <span class="req">*</span></span>
               <button type="button" class="select-btn" id="fHosp" aria-labelledby="fHospLabel" aria-haspopup="dialog"><span class="sel-text">Select hospital</span><span id="fHospChev"></span></button></div>
@@ -307,57 +308,75 @@
               <input class="input" id="fDate" type="date" value="${esc(e.entry_date || today())}" max="${today()}"></div>
           </div>
         </div>
-        <div class="form-section"><h4>Client details</h4><span class="help">Goes on Sheet 1 · P-CARES log</span>
+        <div class="form-section"><h4>Client details</h4>
           <div class="form-grid">
-            <div class="field span-2"><label class="label" for="fClient">Name of client <span class="req">*</span></label>
-              <input class="input" id="fClient" value="${esc(e.client_name || '')}" placeholder="Last name, First name" autofocus></div>
+            <div class="field"><label class="label" for="fClient">Name of client <span class="req">*</span></label>
+              <input class="input caps" id="fClient" value="${esc(e.client_name || '')}" placeholder="LAST NAME, FIRST NAME" autocapitalize="characters" spellcheck="false" autofocus></div>
             <div class="field"><label class="label" for="fMember">Name of PhilHealth member</label>
-              <input class="input" id="fMember" value="${esc(e.member_name || '')}" placeholder="Last name, First name"></div>
+              <input class="input caps" id="fMember" value="${esc(e.member_name || '')}" placeholder="LAST NAME, FIRST NAME" autocapitalize="characters" spellcheck="false"></div>
+
             <div class="field"><label class="label" for="fPatient">Name of patient</label>
-              <input class="input" id="fPatient" value="${esc(e.patient_name || '')}" placeholder="Last name, First name"></div>
-            <div class="field"><span class="label">Patient is</span>
-              <div class="chip-group">
-                <label class="chip"><input type="radio" name="pi" value="member" ${chk(e.patient_is === 'member')}><span>Member</span></label>
-                <label class="chip"><input type="radio" name="pi" value="dependent" ${chk(e.patient_is === 'dependent')}><span>Dependent</span></label>
-              </div></div>
+              <input class="input caps" id="fPatient" value="${esc(e.patient_name || '')}" placeholder="LAST NAME, FIRST NAME" autocapitalize="characters" spellcheck="false"></div>
             <div class="field"><label class="label" for="fContact">Contact number <span class="muted small">(optional)</span></label>
               <input class="input" id="fContact" type="tel" inputmode="tel" value="${esc(e.contact_no || '')}" placeholder="09XX XXX XXXX"></div>
+
+            <div class="field"><label class="label" for="fPi">Patient is</label>
+              <select class="input" id="fPi"><option value="">Select</option>
+                <option value="member" ${e.patient_is === 'member' ? 'selected' : ''}>Member</option>
+                <option value="dependent" ${e.patient_is === 'dependent' ? 'selected' : ''}>Dependent</option></select></div>
             <div class="field"><label class="label" for="fAdmission">Admission date</label>
               <input class="input" id="fAdmission" type="date" value="${esc(e.admission_date || '')}"></div>
-            <div class="field span-2"><span class="label">Client signature <span class="muted small">(sign inside the box)</span></span>
-              <div class="sig-wrap"><canvas id="fSig" class="sig-canvas" width="600" height="200" aria-label="Signature pad"></canvas></div>
-              <div class="row" style="justify-content:space-between"><span class="help">Sign with the signature pad.</span><button type="button" class="btn btn-ghost btn-sm" id="sigClear">Clear</button></div></div>
+
+            <div class="field span-2"><span class="label">Client signature <span class="muted small">(sign inside the box, or paste an image)</span></span>
+              <div class="sig-wrap" id="sigWrap" tabindex="0"><canvas id="fSig" class="sig-canvas" width="600" height="200" aria-label="Signature pad"></canvas></div>
+              <div class="row" style="justify-content:flex-end">
+                <button type="button" class="btn btn-ghost btn-sm" id="sigPaste">Paste from clipboard</button>
+                <button type="button" class="btn btn-ghost btn-sm" id="sigClear">Clear</button>
+              </div></div>
           </div>
         </div>
-        <div class="form-section"><h4>Classification</h4><span class="help">Goes on Sheet 2 · Daily report and the summary</span>
-          <div class="field"><span class="label">Member category <span class="req">*</span></span>
-            <div class="cat-grid" role="radiogroup" aria-label="Member category">${L.CATEGORIES.map(c =>
-              `<label class="chip" title="${esc(c.label)}"><input type="radio" name="cat" value="${esc(c.code)}" ${chk(e.member_category === c.code)}><span><b>${esc(c.code)}</b><small>${esc(c.name)}</small></span></label>`).join('')}</div>
-            <div class="cat-readout" id="catReadout"></div></div>
+        <div class="form-section"><h4>Classification</h4>
           <div class="form-grid">
-            <div class="field"><span class="label">Membership status <span class="req" id="stReq">*</span></span>
-              <div class="chip-group">
-                <label class="chip"><input type="radio" name="st" value="active" ${chk(e.status === 'active')}><span>Active</span></label>
-                <label class="chip"><input type="radio" name="st" value="inactive" ${chk(e.status === 'inactive')}><span>Inactive</span></label>
-              </div></div>
+            <div class="field span-2"><label class="label" for="fCat">Member category <span class="req">*</span></label>
+              <select class="input" id="fCat"><option value="">Select category</option>${L.CATEGORIES.map(c => `<option value="${esc(c.code)}" ${e.member_category === c.code ? 'selected' : ''}>${esc(c.code)} – ${esc(c.label)}</option>`).join('')}</select></div>
+            <div class="field"><label class="label" for="fSt">Membership status <span class="req" id="stReq">*</span></label>
+              <select class="input" id="fSt"><option value="">Select status</option>
+                <option value="active" ${e.status === 'active' ? 'selected' : ''}>Active</option>
+                <option value="inactive" ${e.status === 'inactive' ? 'selected' : ''}>Inactive</option></select></div>
+            <div class="field"><label class="label" for="fSvc">Service</label>
+              <select class="input" id="fSvc"><option value="">None</option>${services.map(sv => `<option value="${sv.key}" ${e.service === sv.key ? 'selected' : ''}>${esc(sv.label)}</option>`).join('')}</select></div>
             <div class="field"><label class="label" for="fInquiry">Nature of inquiry</label>
-              <input class="input" id="fInquiry" list="inqList" value="${esc(e.nature_of_inquiry || '')}" placeholder="What did the client ask about?">
-              <datalist id="inqList">${inquiries.map(i => `<option value="${esc(i)}">`).join('')}</datalist></div>
-            <div class="field span-2"><span class="label">Service</span>
-              <div class="chip-group">${L.SERVICES.map(sv => `<label class="chip"><input type="radio" name="svc" value="${sv.key}" ${chk((e.service || 'none') === sv.key)}><span>${esc(sv.label)}</span></label>`).join('')}</div></div>
-            <div class="field"><label class="switch"><input type="checkbox" id="fWalk" ${chk(e.walk_in)}><span class="switch-ui"></span><span>Walk-in client</span></label></div>
-            <div class="field"><label class="switch"><input type="checkbox" id="fPpff" ${chk(e.ppff)}><span class="switch-ui"></span><span>PPFF administered</span></label></div>
+              <select class="input" id="fInquiry"><option value="">Select inquiry</option>${inqList.map(i => `<option value="${esc(i)}" ${e.nature_of_inquiry === i ? 'selected' : ''}>${esc(i)}</option>`).join('')}</select></div>
             <div class="field"><label class="label" for="fPcf1">PCF1 issued because of</label>
               <select class="input" id="fPcf1"><option value="">Not issued</option>${L.PCF1_REASONS.map(r => `<option value="${r.key}" ${e.pcf1_reason === r.key ? 'selected' : ''}>${esc(r.label)}</option>`).join('')}</select></div>
-            <div class="field"><label class="label" for="fRemarks">Remarks</label>
-              <textarea class="input" id="fRemarks" rows="2">${esc(e.remarks || '')}</textarea></div>
+
+            <div class="field"><label class="switch"><input type="checkbox" id="fWalk" ${chk(e.walk_in)}><span class="switch-ui"></span><span>Walk-in client</span></label></div>
+            <div class="field"><label class="switch"><input type="checkbox" id="fPpff" ${chk(e.ppff)}><span class="switch-ui"></span><span>PPFF administered</span></label></div>
+
+            <div class="field span-2"><label class="label" for="fRemarks">Remarks</label>
+              <input class="input caps" id="fRemarks" value="${esc(e.remarks || '')}" autocapitalize="characters" spellcheck="false"></div>
           </div>
         </div>
       </form>`;
   }
 
+  /* draws a pasted picture onto the signature pad, scaled to fit */
+  function drawOnPad(cv, blob) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(blob), img = new Image();
+      img.onload = () => {
+        const g = cv.getContext('2d'); cv._clear();
+        const sc = Math.min(cv.width / img.width, cv.height / img.height), w = img.width * sc, h = img.height * sc;
+        g.drawImage(img, (cv.width - w) / 2, (cv.height - h) / 2, w, h);
+        cv._st.ink = true; URL.revokeObjectURL(url); resolve();
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('That image could not be read.')); };
+      img.src = url;
+    });
+  }
+
   function initSignature(el, existing) {
-    const cv = $('#fSig', el), g = cv.getContext('2d');
+    const cv = $('#fSig', el), g = cv.getContext('2d'), wrap = $('#sigWrap', el);
     const st = cv._st || (cv._st = { ink: false, drawing: false });
     cv._clear = () => { g.clearRect(0, 0, cv.width, cv.height); st.ink = false; };
     cv._get = () => st.ink ? cv.toDataURL('image/png') : null;
@@ -366,10 +385,36 @@
     if (cv._bound) return; cv._bound = true;
     g.lineWidth = 3; g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = '#000';
     const pt = (ev) => { const r = cv.getBoundingClientRect(); return [(ev.clientX - r.left) * cv.width / r.width, (ev.clientY - r.top) * cv.height / r.height]; };
-    cv.addEventListener('pointerdown', (ev) => { ev.preventDefault(); cv.setPointerCapture(ev.pointerId); st.drawing = true; const [x, y] = pt(ev); g.beginPath(); g.moveTo(x, y); g.lineTo(x + .01, y + .01); g.stroke(); st.ink = true; });
+    cv.addEventListener('pointerdown', (ev) => { ev.preventDefault(); wrap.focus({ preventScroll: true }); cv.setPointerCapture(ev.pointerId); st.drawing = true; const [x, y] = pt(ev); g.beginPath(); g.moveTo(x, y); g.lineTo(x + .01, y + .01); g.stroke(); st.ink = true; });
     cv.addEventListener('pointermove', (ev) => { if (!st.drawing) return; ev.preventDefault(); const [x, y] = pt(ev); g.lineTo(x, y); g.stroke(); g.beginPath(); g.moveTo(x, y); });
     ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(n => cv.addEventListener(n, () => { st.drawing = false; }));
     $('#sigClear', el).addEventListener('click', () => cv._clear());
+
+    // paste with the button
+    $('#sigPaste', el).addEventListener('click', async () => {
+      try {
+        if (!navigator.clipboard || !navigator.clipboard.read) throw Object.assign(new Error('nosupport'), { name: 'NotSupportedError' });
+        const items = await navigator.clipboard.read();
+        let blob = null;
+        for (const it of items) { const t = it.types.find(x => x.indexOf('image/') === 0); if (t) { blob = await it.getType(t); break; } }
+        if (!blob) { UI.toast('No picture found on the clipboard. Copy the signature picture first.', 'error', 5000); return; }
+        await drawOnPad(cv, blob);
+      } catch (err) {
+        UI.toast('Could not read the clipboard. Click the signature box, then press Ctrl+V.', 'error', 6000);
+        wrap.focus({ preventScroll: true });
+      }
+    });
+    // paste with Ctrl+V while the signature box is selected
+    wrap.addEventListener('paste', async (ev) => {
+      const items = (ev.clipboardData && ev.clipboardData.items) || [];
+      for (const it of items) {
+        if (it.kind === 'file' && it.type.indexOf('image/') === 0) {
+          ev.preventDefault();
+          try { await drawOnPad(cv, it.getAsFile()); } catch (err) { UI.toast(err.message, 'error'); }
+          return;
+        }
+      }
+    });
   }
 
   function wireForm(h, e) {
@@ -379,31 +424,44 @@
       q('#fHospChev').innerHTML = icon('chevronDown', 18);
       h._hf.set(e.hospital_id ? { id: e.hospital_id, name: e.hospital_name } : (hospital ? { id: hospital.id, name: hospital.name } : null));
     }
+    // everything typed in the name and remarks boxes becomes CAPITAL letters
+    if (!h._caps) {
+      h._caps = true;
+      $$('input.caps', el).forEach(inp => inp.addEventListener('input', () => {
+        const a = inp.selectionStart, b = inp.selectionEnd, u = inp.value.toUpperCase();
+        if (u !== inp.value) { inp.value = u; try { inp.setSelectionRange(a, b); } catch (x) {} }
+      }));
+      // tapping a selected service again clears it
+      $$('input[name="svc"]', el).forEach(r => {
+        r.addEventListener('pointerdown', () => { r._was = r.checked; });
+        r.addEventListener('click', () => { if (r._was) r.checked = false; r._was = false; });
+      });
+    }
     let touchedPatient = !!e.patient_name;
     q('#fPatient').addEventListener('input', () => { touchedPatient = true; });
-    const copyMember = () => { if (!touchedPatient && ($('input[name="pi"]:checked', el) || {}).value === 'member') q('#fPatient').value = q('#fMember').value; };
+    const copyMember = () => { if (!touchedPatient && q('#fPi').value === 'member') q('#fPatient').value = q('#fMember').value; };
     q('#fMember').addEventListener('input', copyMember);
-    $$('input[name="pi"]', el).forEach(r => r.addEventListener('change', copyMember));
+    q('#fPi').addEventListener('change', copyMember);
     const syncCat = () => {
-      const c = ($('input[name="cat"]:checked', el) || {}).value, nm = c === 'NM';
-      q('#catReadout').textContent = c ? (L.catByCode(c).label) : '';
-      $$('input[name="st"]', el).forEach(r => { r.disabled = nm; if (nm) r.checked = false; });
+      const nm = q('#fCat').value === 'NM';
+      q('#fSt').disabled = nm; if (nm) q('#fSt').value = '';
       q('#stReq').hidden = nm;
     };
-    $$('input[name="cat"]', el).forEach(r => r.addEventListener('change', syncCat)); syncCat();
+    q('#fCat').addEventListener('change', syncCat); syncCat();
     initSignature(el, e.signature);
     if (!h._wired) { h._wired = true; q('#entryForm').addEventListener('submit', (ev) => { ev.preventDefault(); q('#entrySave').click(); }); }
   }
 
   function readForm(h) {
-    const el = h.el, v = (id) => $(id, el).value.trim() || null, r = (n) => ($(`input[name="${n}"]:checked`, el) || {}).value || null;
+    const el = h.el, v = (id) => $(id, el).value.trim() || null, r = (n) => $({ pi: '#fPi', cat: '#fCat', st: '#fSt', svc: '#fSvc' }[n], el).value || null;
+    const vu = (id) => { const x = v(id); return x ? x.toUpperCase() : null; };
     const cat = r('cat'), hosp = h._hf.get();
     return {
       hospital_id: hosp ? hosp.id : null, hospital_name: hosp ? hosp.name : null, entry_date: v('#fDate'),
-      client_name: v('#fClient'), member_name: v('#fMember'), patient_name: v('#fPatient'), contact_no: v('#fContact'),
+      client_name: vu('#fClient'), member_name: vu('#fMember'), patient_name: vu('#fPatient'), contact_no: v('#fContact'),
       patient_is: r('pi'), admission_date: v('#fAdmission'), member_category: cat, status: cat === 'NM' ? null : r('st'),
       nature_of_inquiry: v('#fInquiry'), service: r('svc') || 'none', walk_in: $('#fWalk', el).checked, ppff: $('#fPpff', el).checked,
-      pcf1_reason: v('#fPcf1'), remarks: v('#fRemarks'), signature: $('#fSig', el)._get()
+      pcf1_reason: v('#fPcf1'), remarks: vu('#fRemarks'), signature: $('#fSig', el)._get()
     };
   }
 
@@ -424,7 +482,7 @@
     let e = entry || {};
     if (entry && entry.has_signature) { try { e = { ...entry, signature: await API.entries.signature(entry.id) }; } catch (x) {} }
     const h = UI.modal({
-      title: entry ? 'Edit entry' : 'Add entry', size: 'lg', persistent: false,
+      title: entry ? 'Edit entry' : 'Add entry', size: '', className: 'modal-entry', persistent: false,
       body: formHTML(e),
       footer: entry
         ? [{ label: 'Cancel', className: 'btn-ghost' }, { id: 'entrySave', label: 'Save changes', className: 'btn-primary', onClick: (hh, b) => save(hh, b, entry, false) }]

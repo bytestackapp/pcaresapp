@@ -1,13 +1,15 @@
-/* Splash screen: shows for 5 seconds, then goes to the dashboard (valid session) or login. */
+/* Splash screen: shows for a few seconds, then goes to the dashboard (valid session) or login. */
 (async function () {
   const C = window.APP_CONFIG;
   const FADE_MS = 400;
   const start = Date.now();
   const overlay = document.getElementById('splashOverlay');
 
+  overlay.style.setProperty('--splash-ms', C.SPLASH_MS + 'ms');
+  overlay.classList.add('run');
+
   document.title = C.APP_NAME;
   document.getElementById('splashLogo').src = C.LOGO;
-  document.getElementById('splashCares').src = C.LOGO_CARES;
   document.getElementById('splashVersion').textContent = 'Version ' + (C.APP_VERSION || '1.0.0');
   document.getElementById('splashYear').textContent = new Date().getFullYear();
 

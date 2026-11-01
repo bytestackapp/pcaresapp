@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Create account · LogSheet</title>
+  <title>PCares App · Create account</title>
   <meta name="theme-color" content="#3B8526">
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/favicon.png?v=2" type="image/png">
@@ -13,18 +13,14 @@
 </head>
 <body class="public">
   <main class="auth-page">
-    <div class="auth-card wide">
+    <div class="auth-card">
       <div class="auth-brand">
-        <img src="/image/logo.png" alt="" id="brandLogo">
         <h1>Create your account</h1>
-        <p>An administrator will review your request before you can sign in.</p>
       </div>
 
       <section id="panelForm">
-        <a class="back-link" href="/public/login.html" id="backLink"></a>
         <div id="signupAlert" class="alert" hidden></div>
         <form id="signupForm" novalidate>
-          <div class="form-grid">
             <div class="field">
               <label class="label" for="fullName">Full name <span class="req">*</span></label>
               <input class="input" id="fullName" autocomplete="name" placeholder="First and last name" required>
@@ -60,8 +56,10 @@
                 <button type="button" class="toggle-btn" data-pw-toggle="suConfirm" aria-label="Show password"></button>
               </div>
             </div>
+          <div class="btn-row">
+            <a class="btn btn-muted" href="/public/login.html">Back</a>
+            <button class="btn btn-primary" id="signupBtn" type="submit">Submit for approval</button>
           </div>
-          <button class="btn btn-primary btn-block" id="signupBtn" type="submit">Submit for approval</button>
         </form>
       </section>
 

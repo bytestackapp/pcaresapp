@@ -1,7 +1,5 @@
 (function () {
   const C = APP_CONFIG, { $, icon, setBusy, showAlert, hideAlert } = UI;
-  $('#brandLogo').src = C.LOGO;
-  $('#backLink').innerHTML = icon('chevronLeft', 16) + ' Back to sign in';
   $('#doneIcon').innerHTML = icon('check');
   UI.bindPasswordToggles(document);
   const alertBox = $('#signupAlert');

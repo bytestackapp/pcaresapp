@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Sign in · LogSheet</title>
+  <title>PCares App · Sign in</title>
   <meta name="theme-color" content="#3B8526">
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/favicon.png?v=2" type="image/png">
@@ -13,10 +13,9 @@
 </head>
 <body class="public">
   <main class="auth-page">
-    <div class="auth-card">
-      <div class="auth-brand">
+    <div class="auth-card login">
+      <div class="auth-brand" id="authBrand">
         <img src="/image/logo.png" alt="" id="brandLogo">
-        <h1 id="brandName">LogSheet</h1>
         <p id="brandTag"></p>
       </div>
 
@@ -56,16 +55,18 @@
 
       <!-- Forgot password -->
       <section id="panelForgot" hidden>
-        <button type="button" class="back-link" id="backToLogin"></button>
-        <h2 style="font-size:1.2rem;margin-bottom:.25rem">Reset your password</h2>
+        <h2 style="font-size:1.2rem;margin-bottom:1.5rem">Reset your password</h2>
         <p class="muted">Enter the email address on your account and we will send you a reset link.</p>
         <div id="forgotAlert" class="alert" hidden></div>
         <form id="forgotForm" novalidate>
-          <div class="field">
+          <div class="field" style="margin-top:1rem">
             <label class="label" for="forgotEmail">Email address</label>
             <input class="input" id="forgotEmail" type="email" autocomplete="email" placeholder="you@example.com" required>
           </div>
-          <button class="btn btn-primary btn-block" id="forgotBtn" type="submit">Send reset link</button>
+          <div class="btn-row">
+            <button type="button" class="btn btn-muted" id="backToLogin">Back</button>
+            <button class="btn btn-primary" id="forgotBtn" type="submit">Send reset link</button>
+          </div>
         </form>
       </section>
     </div>

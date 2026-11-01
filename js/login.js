@@ -1,8 +1,7 @@
 (async function () {
   const C = APP_CONFIG, { $, icon, setBusy, showAlert, hideAlert } = UI;
-  $('#brandName').textContent = C.APP_NAME; $('#brandTag').textContent = C.APP_TAGLINE; $('#brandLogo').src = C.LOGO;
+  $('#brandTag').textContent = C.APP_TAGLINE; $('#brandLogo').src = C.LOGO;
   $('#hospChevron').innerHTML = icon('chevronDown', 18);
-  $('#backToLogin').innerHTML = icon('chevronLeft', 16) + ' Back to sign in';
   UI.bindPasswordToggles(document);
 
   const alertBox = $('#loginAlert');
@@ -59,7 +58,7 @@
   });
 
   /* forgot password */
-  const show = (id) => { ['panelLogin', 'panelForgot'].forEach(x => { $('#' + x).hidden = x !== id; }); };
+  const show = (id) => { ['panelLogin', 'panelForgot'].forEach(x => { $('#' + x).hidden = x !== id; }); $('#authBrand').hidden = id === 'panelForgot'; };
   $('#forgotLink').addEventListener('click', () => show('panelForgot'));
   $('#backToLogin').addEventListener('click', () => show('panelLogin'));
   $('#forgotForm').addEventListener('submit', async (e) => {
