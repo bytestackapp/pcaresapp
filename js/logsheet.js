@@ -21,7 +21,8 @@
         <button class="btn btn-primary" id="addBtn">${icon('plus', 18)}<span>Add entry</span></button>
       </div>
     </div>
-            <div class="card ls-toolbar">
+    <div class="section-title"><h4>Table view</h4></div>
+    <div class="card ls-toolbar">
       <div class="tb-field">
         <label class="label" for="fHosp">Hospital</label>
         <select class="input" id="fHosp"></select>
@@ -41,9 +42,9 @@
       </div>
       <p class="help tb-hint" id="dateHint" hidden>Choose both From and To to filter by date.</p>
     </div>
+    <div class="section-title" id="sheetInfoTitle" hidden><h4>Sheet details</h4><span class="saved-flag" id="savedFlag">Saved</span></div>
     <div class="card card-pad sheet-info" id="sheetInfo" hidden></div>
-    <div class="card"><div class="table-wrap" id="tableWrap"></div><div id="pager"></div></div>
-    <div class="card card-pad" style="margin-top:1rem" id="bottom"></div>`;
+    <div class="card"><div class="table-wrap" id="tableWrap"></div><div id="pager"></div></div>`;
 
   /* ============================== data ============================== */
   async function load(silent) {
@@ -238,13 +239,14 @@
     }
   }
 
-  /* Control no. and OPD class details: shown above the table on the Daily report view */
+      /* Sheet details (hospital, date, control no., OPD class): shown above the table on both tabs */
   function renderSheetInfo() {
-    const box = $('#sheetInfo');
-    if (state.tab !== 's2' || state.loading || state.error || !state.all.length) { box.hidden = true; box.innerHTML = ''; return; }
-    box.hidden = false;
+    const box = $('#sheetInfo'), title = $('#sheetInfoTitle');
+    if (state.loading || state.error || !state.all.length) { box.hidden = true; box.innerHTML = ''; title.hidden = true; return; }
+    box.hidden = false; title.hidden = false;
     const g = currentGroup();
     if (!g) {
+      title.hidden = true;
       box.innerHTML = `<div class="sheet-info-note">${icon('info', 18)}<span>To set the control number and OPD class details, filter to <strong>one hospital</strong> and <strong>one date</strong> (same From and To).</span></div>`;
       return;
     }
@@ -252,12 +254,13 @@
     const sh = (sheetKey === g.key && sheetRow) || {};
     const [cy, cm, cs] = (sh.control_no || (g.date.slice(0, 7) + '-')).split('-');
     box.innerHTML = `
-      <div class="sheet-info-head"><strong>${esc(g.hospital)}</strong><span class="muted small">${esc(L.fmtDate(g.date, 'long'))}</span><span class="saved-flag" id="savedFlag">Saved</span></div>
       <div class="sheet-info-grid">
+        <div class="field si-wide"><span class="label">Hospital name</span><div class="info-value">${esc(g.hospital)}</div></div>
+        <div class="field"><span class="label">Date</span><div class="info-value">${esc(L.fmtDate(g.date, 'long'))}</div></div>
         <div class="field"><label class="label" for="cY">Control no.</label>
-          <div class="ctrl-row"><input class="input" id="cY" value="${esc(cy || '')}" maxlength="4" inputmode="numeric" aria-label="Year" style="width:5.2rem">–
-            <input class="input" id="cM" value="${esc(cm || '')}" maxlength="2" inputmode="numeric" aria-label="Month" style="width:3.4rem">–
-            <input class="input" id="cS" value="${esc(cs || '')}" maxlength="4" inputmode="numeric" aria-label="Series no." style="width:4.6rem"></div>
+          <div class="ctrl-row"><input class="input" id="cY" value="${esc(cy || '')}" maxlength="4" inputmode="numeric" aria-label="Year">–
+            <input class="input" id="cM" value="${esc(cm || '')}" maxlength="2" inputmode="numeric" aria-label="Month">–
+            <input class="input" id="cS" value="${esc(cs || '')}" maxlength="4" inputmode="numeric" aria-label="Series no."></div>
           <span class="help">Year · Month · Series no.</span></div>
         <div class="field"><label class="label" for="mOpdN">No. of times OPD class is conducted <span class="muted small">(if applicable)</span></label>
           <input class="input" id="mOpdN" type="number" min="0" inputmode="numeric" value="${sh.opd_class_count ?? ''}"></div>
@@ -271,13 +274,8 @@
     $('#mOpdC').addEventListener('change', () => saveMeta(g, { opd_class_clients: num('#mOpdC') }));
   }
 
-  /* Client log view: PCF1 issuance table only. The Daily report view has no bottom block. */
-  function renderBottom() {
-    const box = $('#bottom');
-    if (state.tab !== 's1' || state.error || (!state.loading && !state.all.length)) { box.innerHTML = ''; box.hidden = true; return; }
-    box.hidden = false;
-    box.innerHTML = state.loading ? '<div class="skeleton" style="height:160px"></div>' : pcf1HTML(L.computeSummary(state.view));
-  }
+    /* The PCF1 block was removed from the page (it is still printed in the PDF). */
+  function renderBottom() {}
 
   /* ============================== entry form ============================== */
   function formHTML(e) {

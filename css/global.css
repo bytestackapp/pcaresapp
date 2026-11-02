@@ -674,3 +674,38 @@ input[type="password"]::-webkit-credentials-auto-fill-button { visibility: hidde
 .info-btn { display: inline-grid; place-items: center; width: 26px; height: 26px; border: 0; border-radius: 50%; background: none; color: var(--info); cursor: pointer; transition: background .15s, transform .15s; }
 .info-btn:hover { background: var(--info-soft); }
 .info-btn:active { transform: scale(.9); }
+
+/* Sheet details block: every field uses the same size and style */
+.sheet-info-head { justify-content: space-between; }
+.sheet-info-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1rem 1.25rem; align-items: start; }
+.sheet-info-grid .field { grid-column: span 2; margin-bottom: 0; }
+.sheet-info-grid .field.si-wide { grid-column: span 4; }
+.sheet-info .label { font-size: .85rem; font-weight: 700; color: var(--text-2); }
+.sheet-info .input,
+.sheet-info .info-value { font-size: .95rem; font-weight: 600; min-height: 44px; }
+.sheet-info .info-value {
+  display: flex; align-items: center; padding: .6rem .85rem; border-radius: 10px;
+  background: var(--surface-2); border: 1.5px solid var(--border); color: var(--text);
+}
+.sheet-info input[type="number"] { max-width: none; }
+.sheet-info .ctrl-row { display: flex; align-items: center; gap: .4rem; }
+.sheet-info .ctrl-row .input { flex: 1 1 0; min-width: 0; width: auto; text-align: center; padding: .5rem .3rem; }
+.sheet-info .ctrl-row .input#cS { flex: 1.3 1 0; }
+@media (max-width: 980px) {
+  .sheet-info-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sheet-info-grid .field, .sheet-info-grid .field.si-wide { grid-column: span 1; }
+  .sheet-info-grid .field.si-wide { grid-column: 1 / -1; }
+}
+@media (max-width: 560px) {
+  .sheet-info-grid { grid-template-columns: 1fr; }
+  .sheet-info-grid .field, .sheet-info-grid .field.si-wide { grid-column: 1 / -1; }
+}
+/* Green section titles (same look as the headings in the Add entry window) */
+.section-title { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; margin: .5rem .25rem .6rem; }
+.section-title h4 { font-size: 1.15rem; font-weight: 800; color: var(--primary); }
+
+/* Stop the Control no. boxes from overflowing into the next field */
+.sheet-info-grid .field { min-width: 0; grid-template-columns: minmax(0, 1fr); }
+.sheet-info .ctrl-row { min-width: 0; }
+.sheet-info .ctrl-row .input { width: 100%; }
+
