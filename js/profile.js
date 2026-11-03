@@ -1,13 +1,11 @@
 (async function () {
   const ctx = await Shell.init();
-  const { hospital } = ctx; let profile = ctx.profile;
+  let hospital = ctx.hospital; let profile = ctx.profile;
   const L = Logic, { $, esc, icon, setBusy, showAlert, hideAlert } = UI;
   const root = $('#page');
 
   const roleBadge = profile.role === 'admin' ? '<span class="badge badge-blue">Administrator</span>' : '<span class="badge badge-green">Staff</span>';
-  const theme = (() => { try { return localStorage.getItem('ls_theme') || 'system'; } catch (e) { return 'system'; } })();
-  let folderName = null;
-  try { folderName = (await API.files.info()).name; } catch (e) {}
+  const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
 
   function draw() {
     root.innerHTML = `
@@ -18,6 +16,7 @@
               <span class="avatar avatar-lg">${esc(UI.initials(profile.full_name))}</span>
               <div><h2 style="font-size:1.35rem">${esc(profile.full_name)}</h2><div class="row" style="margin-top:.3rem">${roleBadge}<span class="muted small">@${esc(profile.username)}</span></div></div>
               <span class="spacer"></span>
+              <button class="btn btn-ghost btn-sm" id="hospSwitch">${icon('refresh', 16)}<span>Switch hospital</span></button>
               <button class="btn btn-ghost btn-sm" id="editBtn">${icon('edit', 16)}<span>Edit details</span></button>
             </div>
             <dl class="kv">
@@ -31,18 +30,17 @@
           </section>
           <section class="card card-pad">
             <h3 style="margin-bottom:.2rem">Your data</h3>
-            <p class="muted small">Your entries are saved as files on this laptop, in a <strong>PCares</strong> folder inside the folder you chose (with <strong>data</strong> and <strong>backup</strong> in it). A backup is made automatically once a day. Keep the folder and backups safe: they contain patient details.</p>
-            <dl class="kv" style="margin-bottom:1rem"><dt>Folder</dt><dd id="fsName">${esc(folderName || 'Not chosen yet')}</dd></dl>
+            <p class="muted small">Your entries are saved as files on this laptop, in the <strong>C:\\Temp\\PCares</strong> folder (with <strong>data</strong> and <strong>backup</strong> in it). A backup is made automatically once a day. Keep the folder and backups safe: they contain patient details.</p>
+            <dl class="kv" style="margin-bottom:1rem;grid-template-columns:auto 1fr"><dt>Folder</dt><dd id="fsName">C:\\Temp\\PCares</dd></dl>
             <div class="row">
               <button class="btn btn-ghost btn-sm" id="fsBackup">${icon('download', 16)}<span>Back up now</span></button>
               <button class="btn btn-ghost btn-sm" id="fsRestore">${icon('refresh', 16)}<span>Restore backup</span></button>
-              <button class="btn btn-ghost btn-sm" id="fsChange">${icon('file', 16)}<span>Change folder</span></button>
             </div>
           </section>
           <section class="card card-pad">
             <h3 style="margin-bottom:.2rem">Appearance</h3><p class="muted small">Dark mode is easier on the eyes during night shifts.</p>
             <div class="seg" id="themeSeg" role="group" aria-label="Theme">
-              ${['system', 'light', 'dark'].map(t => `<button data-t="${t}" class="${t === theme ? 'active' : ''}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('')}
+              ${['light', 'dark'].map(t => `<button data-t="${t}" class="${t === theme ? 'active' : ''}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('')}
             </div>
           </section>
         </div>
@@ -65,6 +63,19 @@
     $('#editBtn').addEventListener('click', openEdit);
     const themePill = UI.pill($('#themeSeg'), '.active');
 
+    $('#hospSwitch').addEventListener('click', async () => {
+      const h = await UI.pickHospital({ selectedId: profile.hospital_id });
+      if (!h || h.id === profile.hospital_id) return;
+      try {
+        await API.setMyHospital(h.id);
+        profile = { ...profile, hospital_id: h.id }; ctx.profile = profile;
+        hospital = h; ctx.hospital = h;
+        try { localStorage.setItem('ls_last_hospital', h.id); } catch (x) {}
+        document.querySelectorAll('.user-meta small').forEach(el => { el.textContent = h.name; });
+        draw(); UI.toast('Now working in ' + h.name + '.', 'success');
+      } catch (err) { UI.toast(err.message, 'error', 5000); }
+    });
+
     $('#fsBackup').addEventListener('click', async (e) => {
       const b = e.currentTarget; setBusy(b, true, 'Backing up');
       try { const name = await API.files.backupNow(); UI.toast('Backup saved: ' + name, 'success', 6000); }
@@ -72,17 +83,6 @@
       finally { setBusy(b, false); }
     });
     $('#fsRestore').addEventListener('click', openRestore);
-    $('#fsChange').addEventListener('click', async () => {
-      const yes = await UI.confirm({
-        title: 'Change data folder?', confirmText: 'Choose folder', iconName: 'file',
-        message: '<p>Your current files stay where they are. PCaresApp will use the new folder from now on. It starts empty unless that folder already contains your <strong>data</strong> folder.</p>'
-      });
-      if (!yes) return;
-      try {
-        const name = await API.files.chooseFolder();
-        if (name) { folderName = name; $('#fsName').textContent = name; UI.toast('Now saving to the folder “' + name + '”.', 'success', 5000); }
-      } catch (err) { UI.toast(err.message, 'error', 6000); }
-    });
 
     $('#themeSeg').addEventListener('click', (e) => {
       const b = e.target.closest('[data-t]'); if (!b) return;
@@ -109,11 +109,11 @@
 
   async function openRestore() {
     let list;
-    try { list = await API.files.listBackups(); folderName = (await API.files.info()).name; $('#fsName').textContent = folderName || ''; }
+    try { list = await API.files.listBackups(); }
     catch (err) { return UI.toast(err.message, 'error', 6000); }
     if (!list.length) return UI.toast('No backups were found in the backup folder yet.', 'info', 5000);
     UI.modal({
-      title: 'Restore a backup', size: 'sm',
+      title: 'Restore a backup', headIcon: 'refresh', size: 'sm',
       body: `<div id="rsAlert" class="alert alert-warn">${icon('alert', 18)}<span>Your current data is backed up first, then replaced by the backup you choose. Entries added after that backup will be gone from the list.</span></div>
         <ul class="pick-list" role="radiogroup" aria-label="Backups">${list.map((b, i) => `
           <li><label class="pick-item"><input type="radio" name="bk" value="${esc(b.name)}" ${i === 0 ? 'checked' : ''}><span class="radio-dot" aria-hidden="true"></span>
@@ -132,12 +132,12 @@
 
   function openEdit() {
     UI.modal({
-      title: 'Edit details', size: 'sm',
+      title: 'Edit details', headIcon: 'edit', size: 'sm',
       body: `<div id="edAlert" class="alert" hidden></div>
         <div class="field"><label class="label" for="edName">Full name</label><input class="input" id="edName" value="${esc(profile.full_name)}"></div>
         <div class="field"><label class="label" for="edPos">Position</label><input class="input" id="edPos" value="${esc(profile.position || '')}"></div>
         <div class="field"><label class="label" for="edTel">Contact number</label><input class="input" id="edTel" type="tel" value="${esc(profile.contact_no || '')}"></div>
-        <p class="help">Your username and email can only be changed by an administrator. Your hospital is chosen when you sign in.</p>`,
+        <p class="help">Your username and email can only be changed by an administrator. To change your hospital, use Switch hospital.</p>`,
       footer: [{ label: 'Cancel', className: 'btn-ghost' }, {
         label: 'Save changes', className: 'btn-primary',
         onClick: async (h, b) => {

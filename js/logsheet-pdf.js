@@ -243,7 +243,7 @@
         ['Total No. of Inpatient Clients Served (At Post + Ward Class)', s.totals.inpatient, 1017, 1053],
         ['Total No. of Outpatient Clients', s.totals.outpatient, 1053, 1089],
         ['Total No. of Walk-in Clients', s.walkIn, 1089, 1125],
-        ['Total No. of PPFF Administered', s.ppff, 1125, 1160]
+        ['Total No. of PPFF Administered', (sh.ppff_total !== null && sh.ppff_total !== undefined && sh.ppff_total !== '') ? sh.ppff_total : s.ppff, 1125, 1160]
       ];
       metrics.forEach(([l, v, y0, y1]) => {
         d.txt(l, 603, y0, 778, y1, { bold: true, size: 7.2, align: 'left', pad: 4, maxLines: 2, narrow: true });

@@ -10,3 +10,4 @@ node_modules/
 Thumbs.db
 desktop.ini
 .references/
+*.bat

@@ -26,7 +26,7 @@
   `;
 
   const notes = [];
-  if (settings.announcement) notes.push(`<div class="alert alert-info">${icon('info', 18)}<span>${esc(settings.announcement)}</span></div>`);
+  if (settings.announcement && (!settings.announcement_expires || today <= settings.announcement_expires)) notes.push(`<div class="alert alert-info">${icon('info', 18)}<span>${esc(settings.announcement)}</span></div>`);
   if (Override.isOn()) notes.push(`<div class="alert alert-warn">${icon('zap', 18)}<span>Override mode is on for ${esc(L.fmtDate(Override.get().date, 'long'))}. Turn it off from the banner above when you are done.</span></div>`);
   $('#notes').innerHTML = notes.join('');
 

@@ -1,5 +1,5 @@
-/* Log sheet page: the full list of every patient entered on this laptop, with filters.
-   Entries are rows; Sheet 1 / Sheet 2 are two views of the same rows, like the paper forms. */
+/* Log sheet page: one table with every patient entered on this laptop, with filters.
+   Export PDF prints both sheets for the entries currently shown in the table. */
 (async function () {
   const ctx = await Shell.init();
   const { profile, hospital } = ctx;
@@ -7,9 +7,8 @@
   const today = () => L.todayStr();
   const PAGE = 50;
   const INQUIRIES = ['DOC REQUIREMENT', 'ADD DEPENDENT', 'PHIC ELIGIBILITY'];
-  const state = { tab: 's1', all: [], view: [], page: 1, search: '', loading: true, error: '', filter: { type: 'none', hospital: '', from: '', to: '' } };
+  const state = { all: [], view: [], page: 1, search: '', loading: true, error: '', filter: { type: 'none', hospital: '', from: '', to: '' } };
   const sigCache = new Map();
-  let sheetKey = null, sheetRow = null;
 
   /* ============================== page skeleton ============================== */
   const root = $('#page');
@@ -21,7 +20,7 @@
         <button class="btn btn-primary" id="addBtn">${icon('plus', 18)}<span>Add entry</span></button>
       </div>
     </div>
-    <div class="section-title"><h4>Table view</h4></div>
+
     <div class="card ls-toolbar">
       <div class="tb-field">
         <label class="label" for="fHosp">Hospital</label>
@@ -29,21 +28,12 @@
       </div>
       <div class="tb-field"><label class="label" for="fFrom">From</label><input type="date" class="input" id="fFrom"></div>
       <div class="tb-field"><label class="label" for="fTo">To</label><input type="date" class="input" id="fTo"></div>
-      <div class="tb-field">
-        <span class="label">Sheet</span>
-        <div class="seg" role="tablist" aria-label="Sheet">
-          <button role="tab" data-tab="s1" class="active">Client log</button>
-          <button role="tab" data-tab="s2">Daily report</button>
-        </div>
-      </div>
       <div class="tb-field tb-search">
         <label class="label" for="search">Search</label>
         <div class="search-box">${icon('search', 18)}<input class="input" id="search" type="search" placeholder="Search names or inquiry" aria-label="Search entries"></div>
       </div>
       <p class="help tb-hint" id="dateHint" hidden>Choose both From and To to filter by date.</p>
     </div>
-    <div class="section-title" id="sheetInfoTitle" hidden><h4>Sheet details</h4><span class="saved-flag" id="savedFlag">Saved</span></div>
-    <div class="card card-pad sheet-info" id="sheetInfo" hidden></div>
     <div class="card"><div class="table-wrap" id="tableWrap"></div><div id="pager"></div></div>`;
 
   /* ============================== data ============================== */
@@ -51,7 +41,7 @@
     if (!silent) { state.loading = true; state.error = ''; renderAll(); }
     try { state.all = (await API.entries.all()).reverse(); state.error = ''; }      // newest date first
     catch (e) { state.error = e.message; if (!silent) state.all = []; UI.toast(e.message, 'error', 6000); }
-    state.loading = false; if (!silent) sheetKey = null; renderAll();
+    state.loading = false; renderAll();
   }
 
   function hospitalsWithData() {
@@ -82,19 +72,6 @@
     return [...m.values()];
   }
 
-  const sheetDefaults = async (g) => ({ pcare_name: profile.full_name, control_no: g.date.slice(0, 7) + '-' + await API.sheets.nextSeries(g.hospital_id, g.date), opd_class_count: null, opd_class_clients: null });
-
-  async function saveMeta(g, fields) {
-    try {
-      const base = sheetRow || await sheetDefaults(g);
-      sheetRow = await API.sheets.upsert({
-        hospital_id: g.hospital_id, sheet_date: g.date, pcare_name: base.pcare_name, control_no: base.control_no,
-        opd_class_count: base.opd_class_count, opd_class_clients: base.opd_class_clients, ...fields
-      });
-      const f = $('#savedFlag'); if (f) { f.classList.add('on'); setTimeout(() => f.classList.remove('on'), 1600); }
-    } catch (e) { UI.toast(e.message, 'error'); }
-  }
-
   /* ============================== rendering ============================== */
   function renderAll() {
     renderFilter();
@@ -102,7 +79,7 @@
     const pages = Math.max(1, Math.ceil(state.view.length / PAGE)); if (state.page > pages) state.page = pages;
     $('#addBtn').disabled = state.loading || !!state.error;
     $('#pdfBtn').disabled = state.loading || !!state.error;
-    renderTable(); renderPager(); renderSheetInfo(); renderBottom();
+    renderTable(); renderPager();
   }
 
   function renderFilter() {
@@ -111,6 +88,7 @@
     $('#fHosp').innerHTML = '<option value="">All hospitals</option>' + hs.map(h => `<option value="${esc(h.id)}" ${h.id === f.hospital ? 'selected' : ''}>${esc(h.name)}</option>`).join('');
     $('#fFrom').value = f.from; $('#fTo').value = f.to;
     $('#fFrom').max = f.to || ''; $('#fTo').min = f.from || '';
+    if ($('#fFrom')._sync) { $('#fFrom')._sync(); $('#fTo')._sync(); }
     $('#dateHint').hidden = !!f.from === !!f.to;
   }
 
@@ -146,32 +124,25 @@
     }
     const start = (state.page - 1) * PAGE;
     const rows = state.view.slice(start, start + PAGE).map((e, i) => ({ e, no: state.view.length - (start + i) }));
-    if (state.tab === 's1') {
-      wrap.innerHTML = `<table class="tbl ls-table"><thead><tr><th>No.</th><th>Date entered</th><th>Hospital</th><th>Name of client</th><th>Name of PhilHealth member</th><th>Name of patient</th><th>Contact</th><th>Signature</th><th>Patient is</th><th>Admission date</th><th>PCF1</th><th>Action</th></tr></thead><tbody>${rows.map(({ e, no }) => `<tr>
-        ${noCell(no)}${dateCell(e)}${hospCell(e)}
-        ${td('Client', esc(e.client_name), 'name', e.client_name)}
-        ${td('PhilHealth member', esc(e.member_name), '', e.member_name)}
-        ${td('Patient', esc(e.patient_name), '', e.patient_name)}
-        ${td('Contact', esc(e.contact_no), 'nowrap', e.contact_no)}
-        ${td('Signature', e.has_signature ? (sigCache.get(e.id) ? `<img class="sig-thumb" src="${sigCache.get(e.id)}" alt="Client signature">` : `<span data-sig="${e.id}" class="muted small">…</span>`) : '', '', e.has_signature ? 'y' : '')}
-        ${td('Patient is', e.patient_is === 'member' ? '<span class="badge">Member</span>' : e.patient_is === 'dependent' ? '<span class="badge">Dependent</span>' : '', '', e.patient_is)}
-        ${td('Admission date', e.admission_date ? esc(e.admission_date.slice(5, 7) + '/' + e.admission_date.slice(8, 10) + '/' + e.admission_date.slice(0, 4)) : '', 'nowrap', e.admission_date)}
-        ${td('PCF1 reason', e.pcf1_reason ? `<span class="badge badge-amber">${esc((L.PCF1_REASONS.find(r => r.key === e.pcf1_reason) || {}).label || '')}</span>` : '', '', e.pcf1_reason)}
-        ${actionsCell(e, no)}</tr>`).join('')}</tbody></table>`;
-      loadSigs();
-    } else {
-      wrap.innerHTML = `<table class="tbl ls-table"><thead><tr><th>No.</th><th>Date entered</th><th>Hospital</th><th>Name of client</th><th>Category</th><th>Status</th><th>Nature of inquiry</th><th>Service</th><th>Walk-in</th><th>PPFF</th><th>Remarks</th><th>Action</th></tr></thead><tbody>${rows.map(({ e, no }) => `<tr>
-        ${noCell(no)}${dateCell(e)}${hospCell(e)}
-        ${td('Client', esc(e.client_name), 'name', e.client_name)}
-        ${td('Category', catBadge(e.member_category), '', e.member_category)}
-        ${td('Status', e.status === 'active' ? '<span class="badge badge-green">Active</span>' : e.status === 'inactive' ? '<span class="badge badge-amber">Inactive</span>' : '', '', e.status)}
-        ${td('Nature of inquiry', esc(String(e.nature_of_inquiry || '').toUpperCase()), '', e.nature_of_inquiry)}
-        ${td('Service', svcBadge(e.service), '', e.service)}
-        ${td('Walk-in', e.walk_in ? tick : '', '', e.walk_in ? 'y' : '')}
-        ${td('PPFF', e.ppff ? tick : '', '', e.ppff ? 'y' : '')}
-        ${td('Remarks', esc(String(e.remarks || '').toUpperCase()), '', e.remarks)}
-        ${actionsCell(e, no)}</tr>`).join('')}</tbody></table>`;
-    }
+    wrap.innerHTML = `<table class="tbl ls-table"><thead><tr><th>No.</th><th>Date entered</th><th>Hospital</th><th>Name of client</th><th>Name of PhilHealth member</th><th>Name of patient</th><th>Contact</th><th>Signature</th><th>Patient is</th><th>Admission date</th><th>Category</th><th>Status</th><th>Nature of inquiry</th><th>Service</th><th>Walk-in</th><th>PPFF</th><th>PCF1</th><th>Remarks</th><th>Action</th></tr></thead><tbody>${rows.map(({ e, no }) => `<tr>
+      ${noCell(no)}${dateCell(e)}${hospCell(e)}
+      ${td('Client', esc(e.client_name), 'name', e.client_name)}
+      ${td('PhilHealth member', esc(e.member_name), '', e.member_name)}
+      ${td('Patient', esc(e.patient_name), '', e.patient_name)}
+      ${td('Contact', esc(e.contact_no), 'nowrap', e.contact_no)}
+      ${td('Signature', e.has_signature ? (sigCache.get(e.id) ? `<img class="sig-thumb" src="${sigCache.get(e.id)}" alt="Client signature">` : `<span data-sig="${e.id}" class="muted small">…</span>`) : '', '', e.has_signature ? 'y' : '')}
+      ${td('Patient is', e.patient_is === 'member' ? '<span class="badge">Member</span>' : e.patient_is === 'dependent' ? '<span class="badge">Dependent</span>' : '', '', e.patient_is)}
+      ${td('Admission date', e.admission_date ? esc(e.admission_date.slice(5, 7) + '/' + e.admission_date.slice(8, 10) + '/' + e.admission_date.slice(0, 4)) : '', 'nowrap', e.admission_date)}
+      ${td('Category', catBadge(e.member_category), '', e.member_category)}
+      ${td('Status', e.status === 'active' ? '<span class="badge badge-green">Active</span>' : e.status === 'inactive' ? '<span class="badge badge-amber">Inactive</span>' : '', '', e.status)}
+      ${td('Nature of inquiry', esc(String(e.nature_of_inquiry || '').toUpperCase()), '', e.nature_of_inquiry)}
+      ${td('Service', svcBadge(e.service), '', e.service)}
+      ${td('Walk-in', e.walk_in ? tick : '', '', e.walk_in ? 'y' : '')}
+      ${td('PPFF', e.ppff ? tick : '', '', e.ppff ? 'y' : '')}
+      ${td('PCF1 reason', e.pcf1_reason ? `<span class="badge badge-amber">${esc((L.PCF1_REASONS.find(r => r.key === e.pcf1_reason) || {}).label || '')}</span>` : '', '', e.pcf1_reason)}
+      ${td('Remarks', esc(String(e.remarks || '').toUpperCase()), '', e.remarks)}
+      ${actionsCell(e, no)}</tr>`).join('')}</tbody></table>`;
+    loadSigs();
   }
 
   function loadSigs() {          // signatures are separate files, so only the rows on screen are read
@@ -195,87 +166,6 @@
     $('#pgPrev').addEventListener('click', () => { state.page--; renderTable(); renderPager(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
     $('#pgNext').addEventListener('click', () => { state.page++; renderTable(); renderPager(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
   }
-
-  /* ---- summaries (the part that used to be calculated by hand) ---- */
-  const cell = (n) => `<td class="${n ? '' : 'zero'}">${n}</td>`;
-  const catHead = (codes) => codes.map(c => `<th title="${esc((L.catByCode(c) || {}).label || '')}">${c}</th>`).join('');
-
-  function summaryHTML(s) {
-    const codes = L.CAT_CODES, mem = L.MEMBER_CODES;
-    const rowCells = (obj, cs, total) => cs.map(c => cell(obj[c])).join('') + `<td class="rowtotal">${total}</td>`;
-    return `
-      <div class="sum-block"><h4>Daily summary of patients served</h4><div class="table-wrap"><table class="sum-table">
-        <thead><tr><th colspan="2" class="rowhead">Member category</th>${catHead(codes)}<th>Total</th></tr></thead>
-        <tbody>
-          <tr><th rowspan="2" class="rowhead">Inpatient</th><th class="rowhead">At Post</th>${rowCells(s.atPost, codes, s.totals.atPost)}</tr>
-          <tr><th class="rowhead">Ward Class</th>${rowCells(s.ward, codes, s.totals.ward)}</tr>
-          <tr class="total"><th colspan="2" class="rowhead">Total inpatient</th>${rowCells(s.inpatient, codes, s.totals.inpatient)}</tr>
-          <tr><th colspan="2" class="rowhead">Outpatient</th>${rowCells(s.outpatient, codes, s.totals.outpatient)}</tr>
-        </tbody></table></div></div>
-      <div class="sum-block"><h4>Membership status</h4><div class="table-wrap"><table class="sum-table">
-        <thead><tr><th class="rowhead"></th>${catHead(mem)}<th>Total</th></tr></thead>
-        <tbody>
-          <tr><th class="rowhead">Active</th>${rowCells(s.active, mem, s.totals.active)}</tr>
-          <tr><th class="rowhead">Inactive</th>${rowCells(s.inactive, mem, s.totals.inactive)}</tr>
-          <tr class="total"><th class="rowhead">Total</th>${rowCells(s.statusTotal, mem, s.totals.status)}</tr>
-        </tbody></table></div></div>`;
-  }
-
-  function pcf1HTML(s) {
-    const colTotal = (code) => L.PCF1_REASONS.reduce((a, r) => a + s.pcf1[r.key][code], 0);
-    const grand = L.MEMBER_CODES.reduce((a, c) => a + colTotal(c), 0);
-    return `<div class="sum-block" style="margin-top:0"><h4>PCF1 issuance</h4><div class="table-wrap"><table class="sum-table" style="min-width:560px">
-      <thead><tr><th class="rowhead">Member category</th>${L.PCF1_REASONS.map(r => `<th>${esc(r.label)}</th>`).join('')}<th>Total</th></tr></thead>
-      <tbody>${L.MEMBER_CODES.map(c => `<tr><th class="rowhead">${esc(L.catByCode(c).name)}</th>${L.PCF1_REASONS.map(r => cell(s.pcf1[r.key][c])).join('')}<td class="rowtotal">${colTotal(c)}</td></tr>`).join('')}
-      <tr class="total"><th class="rowhead">Total</th>${L.PCF1_REASONS.map(r => `<td>${L.MEMBER_CODES.reduce((a, c) => a + s.pcf1[r.key][c], 0)}</td>`).join('')}<td>${grand}</td></tr></tbody></table></div></div>`;
-  }
-
-    function currentGroup() { const gs = groupsOf(state.view); return gs.length === 1 ? gs[0] : null; }
-
-  function syncSheetRow(g) {
-    if (g && sheetKey !== g.key) {
-      const key = g.key; sheetKey = key; sheetRow = null;
-      API.sheets.get(g.hospital_id, g.date).then(r => { if (sheetKey === key) { sheetRow = r; renderSheetInfo(); } }).catch(() => {});
-    }
-  }
-
-      /* Sheet details (hospital, date, control no., OPD class): shown above the table on both tabs */
-  function renderSheetInfo() {
-    const box = $('#sheetInfo'), title = $('#sheetInfoTitle');
-    if (state.loading || state.error || !state.all.length) { box.hidden = true; box.innerHTML = ''; title.hidden = true; return; }
-    box.hidden = false; title.hidden = false;
-    const g = currentGroup();
-    if (!g) {
-      title.hidden = true;
-      box.innerHTML = `<div class="sheet-info-note">${icon('info', 18)}<span>To set the control number and OPD class details, filter to <strong>one hospital</strong> and <strong>one date</strong> (same From and To).</span></div>`;
-      return;
-    }
-    syncSheetRow(g);
-    const sh = (sheetKey === g.key && sheetRow) || {};
-    const [cy, cm, cs] = (sh.control_no || (g.date.slice(0, 7) + '-')).split('-');
-    box.innerHTML = `
-      <div class="sheet-info-grid">
-        <div class="field si-wide"><span class="label">Hospital name</span><div class="info-value">${esc(g.hospital)}</div></div>
-        <div class="field"><span class="label">Date</span><div class="info-value">${esc(L.fmtDate(g.date, 'long'))}</div></div>
-        <div class="field"><label class="label" for="cY">Control no.</label>
-          <div class="ctrl-row"><input class="input" id="cY" value="${esc(cy || '')}" maxlength="4" inputmode="numeric" aria-label="Year">–
-            <input class="input" id="cM" value="${esc(cm || '')}" maxlength="2" inputmode="numeric" aria-label="Month">–
-            <input class="input" id="cS" value="${esc(cs || '')}" maxlength="4" inputmode="numeric" aria-label="Series no."></div>
-          <span class="help">Year · Month · Series no.</span></div>
-        <div class="field"><label class="label" for="mOpdN">No. of times OPD class is conducted <span class="muted small">(if applicable)</span></label>
-          <input class="input" id="mOpdN" type="number" min="0" inputmode="numeric" value="${sh.opd_class_count ?? ''}"></div>
-        <div class="field"><label class="label" for="mOpdC">No. of clients served during OPD class <span class="muted small">(if applicable)</span></label>
-          <input class="input" id="mOpdC" type="number" min="0" inputmode="numeric" value="${sh.opd_class_clients ?? ''}"></div>
-      </div>`;
-    const ctrl = () => saveMeta(g, { control_no: [$('#cY').value.trim(), $('#cM').value.trim().padStart(2, '0'), $('#cS').value.trim().padStart(3, '0')].join('-') });
-    ['cY', 'cM', 'cS'].forEach(id => $('#' + id).addEventListener('change', ctrl));
-    const num = (id) => { const v = $(id).value; return v === '' ? null : Math.max(0, parseInt(v, 10) || 0); };
-    $('#mOpdN').addEventListener('change', () => saveMeta(g, { opd_class_count: num('#mOpdN') }));
-    $('#mOpdC').addEventListener('change', () => saveMeta(g, { opd_class_clients: num('#mOpdC') }));
-  }
-
-    /* The PCF1 block was removed from the page (it is still printed in the PDF). */
-  function renderBottom() {}
 
   /* ============================== entry form ============================== */
   function formHTML(e) {
@@ -404,14 +294,53 @@
 
   function openLegend() {
     UI.modal({
-      title: 'Member category legend', size: 'sm',
+      title: 'Member category legend', headIcon: 'info', size: 'sm',
       body: `<dl class="legend">${L.CATEGORIES.map(c => `<dt>${esc(c.code)}</dt><dd>${esc(c.label)}</dd>`).join('')}</dl>`,
       footer: [{ label: 'Close', className: 'btn-primary' }]
     });
   }
 
+  /* turns the drop-down lists in the entry form into pop-up pickers */
+  function popSelects(el) {
+    $$('select.input', el).forEach(sel => {
+      if (!sel._btn) {
+        const lab = el.querySelector('label[for="' + sel.id + '"]');
+        const title = lab ? lab.textContent.replace('*', '').replace(/\(.*?\)/, '').trim() : 'Select';
+        const btn = document.createElement('button');
+        btn.type = 'button'; btn.className = 'select-btn';
+        btn.innerHTML = '<span class="sel-text"></span><span class="sel-chev"></span>';
+        $('.sel-chev', btn).innerHTML = icon('chevronDown', 18);
+        sel.hidden = true; sel.after(btn); sel._btn = btn;
+        sel._sync = () => {
+          const o = sel.options[sel.selectedIndex];
+          $('.sel-text', btn).textContent = o ? o.textContent : '';
+          btn.classList.toggle('has-value', !!sel.value);
+          btn.disabled = sel.disabled;
+        };
+        btn.addEventListener('click', () => {
+          const opts = Array.from(sel.options);
+          const m = UI.modal({
+            title, headIcon: 'list', size: 'sm', className: 'modal-picker',
+            body: `<ul class="pick-list" role="radiogroup">${opts.map((o, i) => `<li><label class="pick-item ${o.value === sel.value ? 'is-selected' : ''}"><input type="radio" name="opt" value="${i}" ${o.value === sel.value ? 'checked' : ''}><span class="radio-dot" aria-hidden="true"></span><span class="pick-name">${esc(o.textContent)}</span></label></li>`).join('')}</ul>`,
+            footer: [{ label: 'Cancel', className: 'btn-ghost' }]
+          });
+          $('.pick-list', m.el).addEventListener('change', (ev) => {
+            const o = opts[+ev.target.value];
+            sel.value = o.value; sel._sync();
+            sel.dispatchEvent(new Event('change', { bubbles: true }));
+            setTimeout(() => m.close(), 140);
+          });
+        });
+      }
+      sel._sync();
+    });
+  }
+
   function wireForm(h, e) {
     const el = h.el, q = (s) => $(s, el);
+    popSelects(el);
+    UI.datePicker(q('#fDate'), { clearable: false });
+    UI.datePicker(q('#fAdmission'), { placeholder: 'Select date' });
     if (!h._legend) { h._legend = true; q('#legendBtn').addEventListener('click', openLegend); }
     if (!h._hf) {
       h._hf = UI.hospitalField(q('#fHosp'));
@@ -440,6 +369,7 @@
       const nm = q('#fCat').value === 'NM';
       q('#fSt').disabled = nm; if (nm) q('#fSt').value = '';
       q('#stReq').hidden = nm;
+      $$('select.input', el).forEach(s => s._sync && s._sync());
     };
     q('#fCat').addEventListener('change', syncCat); syncCat();
     initSignature(el, e.signature);
@@ -476,7 +406,7 @@
     let e = entry || {};
     if (entry && entry.has_signature) { try { e = { ...entry, signature: await API.entries.signature(entry.id) }; } catch (x) {} }
     const h = UI.modal({
-      title: entry ? 'Edit entry' : 'Add entry', size: '', className: 'modal-entry', persistent: false,
+      title: entry ? 'Edit entry' : 'Add entry', headIcon: entry ? 'edit' : 'plus', size: '', className: 'modal-entry', persistent: false,
       body: formHTML(e),
       footer: entry
         ? [{ label: 'Cancel', className: 'btn-ghost' }, { id: 'entrySave', label: 'Save changes', className: 'btn-primary', onClick: (hh, b) => save(hh, b, entry, false) }]
@@ -504,7 +434,7 @@
         const f = $('#entryForm', h.el); f.reset();
         $('#fClient', h.el).focus(); h.body.scrollTo({ top: 0 });
         wireForm(h, { entry_date: p.entry_date, hospital_id: p.hospital_id, hospital_name: p.hospital_name });
-        $('#fDate', h.el).value = p.entry_date;
+        $('#fDate', h.el).value = p.entry_date; $('#fDate', h.el)._sync();
         setBusy(btn, false);
         return false;
       }
@@ -512,7 +442,7 @@
     setBusy(btn, false);
   }
 
-    const wait = (ms) => new Promise(r => setTimeout(r, ms));
+  const wait = (ms) => new Promise(r => setTimeout(r, ms));
   async function delEntry(id) {
     const e = state.all.find(x => x.id === id); if (!e) return;
     const ok = await UI.confirm({
@@ -549,47 +479,58 @@
   /* ============================== export ============================== */
   function openExportModal() {
     if (!state.view.length) { UI.toast('There are no entries to export.', 'error'); return; }
-    const gs = groupsOf(state.view).length;
+    const firstDate = state.view.map(e => e.entry_date).sort()[0] || today();
     UI.modal({
-      title: 'Export PDF', size: 'sm',
+      title: 'Export PDF', headIcon: 'download', size: 'sm',
       body: `<div id="expAlert" class="alert" hidden></div>
-        <p>Exports the <strong>${state.view.length}</strong> ${state.view.length === 1 ? 'entry' : 'entries'} now shown in the list: <strong>${gs}</strong> ${gs === 1 ? 'sheet' : 'sheets'}, one per hospital per day. Change the filter first to export less.</p>
-        <div class="field"><span class="label">Sheets</span>
-          <div class="chip-group"><label class="chip"><input type="checkbox" id="expS1" checked><span>Sheet 1 · P-CARES log</span></label>
-          <label class="chip"><input type="checkbox" id="expS2" checked><span>Sheet 2 · Daily report</span></label></div></div>
-        <p class="help">More than ${C.ROWS_PER_PAGE} entries in one day continue on extra pages.</p>`,
+        <div class="field"><label class="label" for="expCY">Control no.</label>
+          <div class="ctrl-row"><input class="input" id="expCY" value="${esc(firstDate.slice(0, 4))}" maxlength="4" inputmode="numeric" aria-label="Year">–
+            <input class="input" id="expCM" value="${esc(firstDate.slice(5, 7))}" maxlength="2" inputmode="numeric" aria-label="Month">–
+            <input class="input" id="expCS" value="" maxlength="4" inputmode="numeric" aria-label="Series no."></div>
+          <span class="help">Year · Month · Series no.</span></div>
+        <div class="field"><label class="label" for="expOpdN">No. of times OPD class is conducted</label>
+          <input class="input" id="expOpdN" type="number" min="0" inputmode="numeric"></div>
+        <div class="field"><label class="label" for="expOpdC">No. of clients served during OPD class</label>
+          <input class="input" id="expOpdC" type="number" min="0" inputmode="numeric"></div>
+        <div class="field"><label class="label" for="expPpff">Total No. of PPFF Administered</label>
+          <input class="input" id="expPpff" type="number" min="0" inputmode="numeric"></div>`,
       footer: [{ label: 'Cancel', className: 'btn-ghost' }, { id: 'expGo', label: 'Download PDF', className: 'btn-primary', onClick: (hh, b) => doExport(hh, b) }]
     });
   }
 
   async function doExport(h, btn) {
     const box = $('#expAlert', h.el); box.hidden = true;
-    const s1 = $('#expS1', h.el).checked, s2 = $('#expS2', h.el).checked;
-    if (!s1 && !s2) { UI.showAlert(box, 'Choose at least one sheet.'); return false; }
     if (!window.PDFLib) { UI.showAlert(box, 'The PDF library did not load. Check your internet connection and try again.'); return false; }
+    const num = (id) => { const v = $(id, h.el).value.trim(); return v === '' ? null : Math.max(0, parseInt(v, 10) || 0); };
+    const cy = $('#expCY', h.el).value.trim(), cm = $('#expCM', h.el).value.trim(), cs = $('#expCS', h.el).value.trim();
+    const control = (cy || cm || cs) ? [cy, cm ? cm.padStart(2, '0') : '', cs ? cs.padStart(3, '0') : ''].join('-') : '';
+    const manual = {
+      pcare_name: profile.full_name, control_no: control,
+      opd_class_count: num('#expOpdN'), opd_class_clients: num('#expOpdC'), ppff_total: num('#expPpff')
+    };
     setBusy(btn, true, 'Preparing');
     try {
       const gs = groupsOf(state.view).sort((a, b) => a.date.localeCompare(b.date) || a.hospital.localeCompare(b.hospital));
-      const days = [];
-      for (const g of gs) {
-        let sheet = await API.sheets.get(g.hospital_id, g.date);
-        if (!sheet) sheet = await API.sheets.upsert({ hospital_id: g.hospital_id, sheet_date: g.date, ...(await sheetDefaults(g)) });
-        const list = g.entries.map(e => ({ ...e })).sort((a, b) => String(a.created_at).localeCompare(b.created_at));
-        days.push({ date: g.date, hospital: g.hospital, entries: list, sheet });
-      }
+      const days = gs.map(g => ({
+        date: g.date, hospital: g.hospital, sheet: { ...manual },
+        entries: g.entries.map(e => ({ ...e })).sort((a, b) => String(a.created_at).localeCompare(b.created_at))
+      }));
       const signed = days.flatMap(d => d.entries).filter(e => e.has_signature);
       for (let i = 0; i < signed.length; i += 40) {
         await Promise.all(signed.slice(i, i + 40).map(async (e) => { try { e.signature = await API.entries.signature(e.id); } catch (x) {} }));
       }
       const names = [...new Set(days.map(d => d.hospital))];
       const label = names.length === 1 ? names[0] : 'Multiple hospitals';
-      const bytes = await PDFExport.generate({ days, sheets: { s1, s2 }, hospital: label, logo: C.LOGO_CARES, appName: C.APP_NAME, rowsPerPage: C.ROWS_PER_PAGE });
+      const bytes = await PDFExport.generate({ days, sheets: { s1: true, s2: true }, hospital: label, logo: C.LOGO_CARES, appName: C.APP_NAME, rowsPerPage: C.ROWS_PER_PAGE });
       const first = days[0].date, last = days[days.length - 1].date;
-      const name = `Logsheet_${label.replace(/[^A-Za-z0-9]+/g, '_')}_${first === last ? first : first + '_to_' + last}.pdf`;
+      const hl = await API.hospitals.list();
+      const hids = [...new Set(gs.map(g => g.hospital_id))];
+      const hsel = hl.find(x => x.id === hids[0]);
+      const short = hids.length === 1 ? ((hsel && hsel.short_name) || label.replace(/[^A-Za-z0-9]+/g, '')) : 'ALL';
+      const name = `Logsheet.${short}.${first.slice(5, 7)}${first.slice(0, 4)}.pdf`;
       const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
       const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 4000);
-      sheetKey = null; renderSheetInfo(); renderBottom();
       UI.toast('PDF downloaded.', 'success');
     } catch (err) { UI.showAlert(box, err.message); setBusy(btn, false); return false; }
     setBusy(btn, false);
@@ -600,15 +541,10 @@
   $('#fHosp').addEventListener('change', (e) => { state.filter.hospital = e.target.value; resetPage(); });
   $('#fFrom').addEventListener('change', (e) => { state.filter.from = e.target.value; resetPage(); });
   $('#fTo').addEventListener('change', (e) => { state.filter.to = e.target.value; resetPage(); });
+  UI.datePicker($('#fFrom'), { placeholder: 'Any date' });
+  UI.datePicker($('#fTo'), { placeholder: 'Any date' });
   $('#addBtn').addEventListener('click', () => openEntryModal());
   $('#pdfBtn').addEventListener('click', openExportModal);
-  const segPill = UI.pill($('.seg'), '[data-tab].active');
-  $$('.seg [data-tab]').forEach(b => b.addEventListener('click', () => {
-    if (state.tab === b.dataset.tab) return;
-    state.tab = b.dataset.tab; $$('.seg [data-tab]').forEach(x => { x.classList.toggle('active', x === b); x.setAttribute('aria-selected', String(x === b)); });
-    segPill.sync(true);
-    renderTable(); renderSheetInfo(); renderBottom();
-  }));
   $('#search').addEventListener('input', UI.debounce((e) => { state.search = e.target.value; resetPage(); }, 200));
   $('#tableWrap').addEventListener('click', (e) => {
     const b = e.target.closest('[data-act]'); if (!b) return;

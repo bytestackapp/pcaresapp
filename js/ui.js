@@ -6,6 +6,7 @@
     user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
     users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
     shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+    shieldOff: '<path d="M19.69 14a6.9 6.9 0 0 0 .31-2V5l-8-3-3.16 1.18"/><path d="M4.73 4.73 4 5v7c0 6 8 10 8 10a20.29 20.29 0 0 0 5.62-4.38"/><line x1="1" y1="1" x2="23" y2="23"/>',
     logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',
     bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
     menu: '<line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>',
@@ -72,12 +73,12 @@
 
   /* ---------- modal ---------- */
   let openCount = 0;
-  function modal({ title, body = '', footer = [], size = '', persistent = false, className = '', onClose } = {}) {
+  function modal({ title, body = '', footer = [], size = '', persistent = false, className = '', headIcon = '', onClose } = {}) {
     const bd = document.createElement('div');
     bd.className = 'modal-backdrop';
     bd.innerHTML = `
       <div class="modal ${size ? 'modal-' + size : ''} ${className}" role="dialog" aria-modal="true" aria-label="${esc(title)}">
-        <div class="modal-head"><h3>${esc(title)}</h3><button type="button" class="icon-btn" data-close aria-label="Close">${icon('x')}</button></div>
+        <div class="modal-head"><h3>${headIcon ? '<span class="head-ico">' + (String(headIcon).charAt(0) === '<' ? headIcon : icon(headIcon, 20)) + '</span>' : ''}${esc(title)}</h3><button type="button" class="icon-btn" data-close aria-label="Close">${icon('x')}</button></div>
         <div class="modal-body"></div>
         ${footer.length ? '<div class="modal-foot"></div>' : ''}
       </div>`;
@@ -137,8 +138,9 @@
     return new Promise(resolve => {
       let result = false;
       modal({
-        title, size: 'sm', className: 'modal-confirm',
-        body: `<div class="confirm-body ${danger ? 'is-danger' : ''}"><div class="confirm-ico">${icon(iconName || (danger ? 'alert' : 'info'), 22)}</div><div class="confirm-msg">${message}</div></div>`,
+        title, size: 'sm', className: 'modal-confirm' + (danger ? ' is-danger' : ''),
+        headIcon: icon(iconName || (danger ? 'alert' : 'info'), 20),
+        body: `<div class="confirm-msg">${message}</div>`,
         footer: [
           { label: cancelText, className: 'btn-ghost', value: false },
           { label: confirmText, className: danger ? 'btn-danger' : 'btn-primary', value: true, onClick: () => { result = true; } }
@@ -153,7 +155,7 @@
     return new Promise(async (resolve) => {
       let chosen = null;
       const h = modal({
-        title: 'Select hospital', size: 'sm', className: 'modal-picker',
+        title: 'Select hospital', headIcon: 'building', size: 'sm', className: 'modal-picker',
         body: `<div class="search-box">${icon('search', 18)}<input type="search" class="input" id="hpSearch" placeholder="Search hospital name" autocomplete="off" aria-label="Search hospital"></div>
                <ul class="pick-list" id="hpList" role="radiogroup" aria-label="Hospitals"><li class="pick-empty">Loading…</li></ul>`,
         footer: [{ label: 'Cancel', className: 'btn-ghost' }],
@@ -249,6 +251,75 @@
     return { sync };
   }
 
+  /* custom date picker: replaces a date box with a button that opens a calendar pop-up */
+  function datePicker(input, opts = {}) {
+    if (!input) return;
+    if (input._dp) { input._sync(); return; }
+    input._dp = true;
+    const clearable = opts.clearable !== false;
+    const lab = input.id ? document.querySelector('label[for="' + input.id + '"]') : null;
+    const title = opts.title || (lab ? lab.textContent.replace('*', '').replace(/\(.*?\)/, '').trim() : 'Select date');
+    const pad = (n) => String(n).padStart(2, '0');
+    const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'select-btn date-btn';
+    btn.innerHTML = '<span class="sel-text"></span><span class="sel-chev"></span>';
+    $('.sel-chev', btn).innerHTML = icon('calendar', 18);
+    input.hidden = true; input.after(btn);
+    input._sync = () => {
+      const v = input.value;
+      $('.sel-text', btn).textContent = v ? (window.Logic ? Logic.fmtDate(v) : v) : (opts.placeholder || 'Select date');
+      btn.classList.toggle('has-value', !!v);
+    };
+    const setValue = (v) => { input.value = v; input._sync(); input.dispatchEvent(new Event('change', { bubbles: true })); };
+
+    btn.addEventListener('click', () => {
+      const T = window.Logic.todayStr(), min = input.min || '', max = input.max || '';
+      const ok = (ds) => !((min && ds < min) || (max && ds > max));
+      const base = input.value || (max && T > max ? max : (min && T < min ? min : T));
+      let y = +base.slice(0, 4), mo = +base.slice(5, 7) - 1, yb = y - (y % 12), view = 'days';
+      const box = document.createElement('div'); box.className = 'dp';
+      function draw() {
+        let head, body;
+        if (view === 'days') {
+          head = MONTHS[mo] + ' ' + y;
+          const first = new Date(y, mo, 1).getDay(), n = new Date(y, mo + 1, 0).getDate();
+          let cells = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => `<span class="dp-dow">${d}</span>`).join('') + '<span></span>'.repeat(first);
+          for (let d = 1; d <= n; d++) {
+            const ds = y + '-' + pad(mo + 1) + '-' + pad(d);
+            cells += `<button type="button" class="dp-cell${ds === input.value ? ' is-sel' : ''}${ds === T ? ' is-today' : ''}" data-d="${ds}" ${ok(ds) ? '' : 'disabled'}>${d}</button>`;
+          }
+          body = `<div class="dp-grid">${cells}</div>`;
+        } else if (view === 'months') {
+          head = String(y);
+          body = `<div class="dp-grid dp-big">${MONTHS.map((nm, i) => `<button type="button" class="dp-cell${i === mo ? ' is-sel' : ''}" data-m="${i}">${nm.slice(0, 3)}</button>`).join('')}</div>`;
+        } else {
+          head = yb + ' – ' + (yb + 11);
+          body = `<div class="dp-grid dp-big">${Array.from({ length: 12 }, (_, i) => yb + i).map(yy => `<button type="button" class="dp-cell${yy === y ? ' is-sel' : ''}" data-y="${yy}">${yy}</button>`).join('')}</div>`;
+        }
+        box.innerHTML = `<div class="dp-head"><button type="button" class="icon-btn" data-nav="-1" aria-label="Previous">${icon('chevronLeft')}</button><button type="button" class="dp-title" data-title>${head}</button><button type="button" class="icon-btn" data-nav="1" aria-label="Next">${icon('chevronRight')}</button></div>` + body;
+      }
+      draw();
+      const footer = [{ label: 'Cancel', className: 'btn-ghost' }];
+      if (clearable) footer.push({ label: 'Clear', className: 'btn-ghost', onClick: () => { setValue(''); } });
+      footer.push({ label: 'Today', className: 'btn-primary', onClick: () => { if (!ok(T)) { toast('Today is not available here.', 'error'); return false; } setValue(T); } });
+      const m = modal({ title, headIcon: 'calendar', size: 'sm', className: 'modal-dp', body: box, footer });
+      box.addEventListener('click', (ev) => {
+        const t = ev.target.closest('button'); if (!t || t.disabled) return;
+        if (t.dataset.nav) {
+          const s = +t.dataset.nav;
+          if (view === 'days') { mo += s; if (mo < 0) { mo = 11; y--; } if (mo > 11) { mo = 0; y++; } }
+          else if (view === 'months') y += s; else yb += s * 12;
+          draw();
+        } else if ('title' in t.dataset) { view = view === 'days' ? 'months' : 'years'; if (view === 'years') yb = y - (y % 12); draw(); }
+        else if (t.dataset.d) { setValue(t.dataset.d); m.close(); }
+        else if (t.dataset.m) { mo = +t.dataset.m; view = 'days'; draw(); }
+        else if (t.dataset.y) { y = +t.dataset.y; view = 'months'; draw(); }
+      });
+    });
+    input._sync();
+  }
+
   /* wrong field: shake it and flash it red for a moment */
   function flagInput(el) {
     if (!el) return;
@@ -258,5 +329,5 @@
     el._flagT = setTimeout(() => el.classList.remove('input-error'), 1400);
   }
 
-  window.UI = { icon, esc, $, $$, debounce, initials, timeAgo, fmtTime, toast, modal, confirm, pickHospital, hospitalField, setBusy, showAlert, hideAlert, bindPasswordToggles, shake, pill, flagInput };
+  window.UI = { icon, esc, $, $$, debounce, initials, timeAgo, fmtTime, toast, modal, confirm, pickHospital, hospitalField, setBusy, showAlert, hideAlert, bindPasswordToggles, shake, pill, flagInput, datePicker };
 })();

@@ -74,8 +74,8 @@
   });
 
   /* info modals */
-  $('#aboutLink').addEventListener('click', () => UI.modal({ title: 'About', size: 'sm', footer: [{ label: 'Close', className: 'btn-primary' }],
+  $('#aboutLink').addEventListener('click', () => UI.modal({ title: 'About', headIcon: 'info', size: 'sm', footer: [{ label: 'Close', className: 'btn-primary' }],
     body: `<p><strong>${UI.esc(C.APP_NAME)}</strong> replaces the paper P-CARES log and the daily report with one digital sheet. Entries are saved per day, the summary is calculated for you, and the sheet exports to PDF in the familiar format.</p>` }));
-  $('#privacyLink').addEventListener('click', () => UI.modal({ title: 'Privacy', size: 'sm', footer: [{ label: 'Close', className: 'btn-primary' }],
+  $('#privacyLink').addEventListener('click', () => UI.modal({ title: 'Privacy', headIcon: 'lock', size: 'sm', footer: [{ label: 'Close', className: 'btn-primary' }],
     body: `<p>Patient and member details entered here are personal information. They are saved only on this device, never on the server. Download a backup from your Profile page regularly.</p><p>Use this app in line with the Data Privacy Act of 2012 (RA 10173) and your hospital’s data policy. Do not share your login.</p>` }));
 })();

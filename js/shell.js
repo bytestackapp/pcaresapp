@@ -85,7 +85,7 @@
       <div class="main-wrap">
         <header class="topbar">
           <a class="topbar-brand" href="${C.PATHS.dashboard}" aria-label="Home"><img src="${C.LOGO}" alt="" class="brand-logo"></a>
-          <h1 class="topbar-title">${esc(title)}</h1>
+          <h1 class="topbar-title">${NAV.find(n => n.key === page) ? '<span class="title-ico">' + icon(NAV.find(n => n.key === page).icon, 22) + '</span>' : ''}<span class="title-text">${esc(title)}</span></h1>
           <div class="topbar-actions">
             <button class="icon-btn" id="themeBtn" aria-label="Toggle dark mode" title="Toggle dark mode"></button>
             <div class="pop-anchor">

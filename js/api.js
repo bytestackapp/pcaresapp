@@ -116,6 +116,7 @@
       const pick = async (h) => {
         try { result = await window.showDirectoryPicker({ id: 'pcares', mode: 'readwrite' }); }
         catch (e) { if (e.name !== 'AbortError') UI.showAlert(UI.$('#fsAlert', h.el), e.message || 'That folder cannot be used. Choose another one.'); return false; }
+        if (!/^(temp|pcares)$/i.test(result.name)) { result = null; UI.showAlert(UI.$('#fsAlert', h.el), 'Please choose the folder named Temp inside the C: drive (C:\\Temp).'); return false; }
       };
       const footer = [{ label: 'Cancel', className: 'btn-ghost' }];
       if (again) {
@@ -126,7 +127,7 @@
         } });
       } else footer.push({ label: 'Choose folder', className: 'btn-primary', onClick: (h) => pick(h) });
       UI.modal({
-        title: again ? 'Allow access to your data folder' : 'Choose where to save your data', size: 'sm', persistent: true, footer,
+        title: again ? 'Allow access to your data folder' : 'Choose where to save your data', headIcon: 'file', size: 'sm', persistent: true, footer,
         body: `<div id="fsAlert" class="alert" hidden></div>` + (again
           ? `<p>PCaresApp needs your permission to use the folder <strong>${UI.esc(prev.name)}</strong> again. Click <strong>Allow access</strong>, then allow it in the browser message (choose “Allow on every visit” to avoid this next time).</p>`
           : `<p>PCaresApp saves your patient entries as files on this laptop, not on the internet.</p>
@@ -281,7 +282,7 @@
       },
       async get(id) { const d = await this.list(); return d.find(h => h.id === id) || null; },
       async add(names) {
-        const rows = names.map(n => ({ name: n.trim() })).filter(r => r.name);
+        const rows = names.map(n => typeof n === 'string' ? { name: n.trim() } : { name: String(n.name || '').trim(), short_name: String(n.short_name || '').trim().toUpperCase() || null }).filter(r => r.name);
         if (!rows.length) return [];
         this._cache = null;
         return ok(await sb.from('hospitals').insert(rows).select());
@@ -399,6 +400,7 @@
     admin: {
       async profiles() { return ok(await sb.from('profiles').select('*').order('created_at', { ascending: false })); },
       async setProfile(id, fields) { return ok(await sb.from('profiles').update(fields).eq('id', id).select().single()); },
+      async deleteUser(id) { const { error } = await sb.rpc('admin_delete_user', { p_id: id }); fail(error); },
       async audit() { return []; },        // entries live on each user's laptop, so there is no central log
       async entriesOn() { return []; }
     }

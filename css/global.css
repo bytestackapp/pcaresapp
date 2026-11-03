@@ -449,7 +449,7 @@ input::-ms-reveal, input::-ms-clear { display: none; }
 .tb-dates { display: contents; }
 .tb-search { flex: 1 1 220px; min-width: 180px; }
 .tb-hint { flex: 1 1 100%; margin: 0; }
-#fHosp { min-width: 320px; }
+.ls-toolbar #fHosp { min-width: 320px; }
 .tb-search .input { width: 100%; }
 .ls-toolbar .search-box { width: 100%; }
 .ls-toolbar .seg button { min-height: 36px; }
@@ -709,3 +709,45 @@ input[type="password"]::-webkit-credentials-auto-fill-button { visibility: hidde
 .sheet-info .ctrl-row { min-width: 0; }
 .sheet-info .ctrl-row .input { width: 100%; }
 
+/* icon beside the title in confirm pop-ups */
+.modal-head h3 { display: flex; align-items: center; gap: .6rem; }
+.head-ico { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--info-soft); color: var(--info); }
+.modal-confirm.is-danger .head-ico { background: var(--danger-soft); color: var(--danger); }
+
+/* icon before the page title in the top bar */
+.topbar-title { display: flex; align-items: center; gap: .6rem; }
+.title-ico { flex: none; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--primary-soft); color: var(--primary); }
+.title-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* keep long hospital names from pushing into the next field in the entry form */
+.form-grid .field { min-width: 0; grid-template-columns: minmax(0, 1fr); }
+.select-btn { min-width: 0; }
+.select-btn .sel-text { min-width: 0; flex: 1; }
+
+/* modal title icon: same look as the top bar icon */
+.head-ico { width: 36px; height: 36px; border-radius: 10px; background: var(--primary-soft); color: var(--primary); }
+
+/* horizontal divider under the app name in the sidebar */
+.sidebar .brand { margin: 0 .85rem; padding: 1.1rem .4rem; border-bottom: 1px solid var(--border); }
+html.override .sidebar .brand { border-bottom-color: var(--border-strong); }
+
+/* greyed-out picker button (for example Membership status when Non-Member is chosen) */
+.select-btn:disabled { opacity: .55; cursor: not-allowed; background: var(--surface-3); }
+.select-btn:disabled:hover { border-color: var(--border-strong); }
+
+/* custom date picker */
+.date-btn { min-width: 0; }
+.tb-field .date-btn { min-width: 150px; }
+@media (max-width: 760px) { .tb-field .date-btn { width: 100%; } }
+.dp-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .75rem; }
+.dp-title { flex: 1; border: 0; background: none; font: inherit; font-weight: 800; font-size: 1.02rem; color: var(--text); padding: .4rem .6rem; border-radius: 10px; cursor: pointer; }
+.dp-title:hover { background: var(--surface-3); }
+.dp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.dp-grid.dp-big { grid-template-columns: repeat(3, 1fr); }
+.dp-dow { text-align: center; font-size: .75rem; font-weight: 700; color: var(--text-3); padding: .3rem 0; }
+.dp-cell { height: 40px; border: 0; border-radius: 10px; background: none; font: inherit; font-weight: 600; color: var(--text); cursor: pointer; font-variant-numeric: tabular-nums; transition: background .15s, color .15s; }
+.dp-big .dp-cell { height: 48px; }
+.dp-cell:hover:not(:disabled):not(.is-sel) { background: var(--surface-3); }
+.dp-cell.is-today { box-shadow: inset 0 0 0 1.5px var(--primary); color: var(--primary); }
+.dp-cell.is-sel { background: var(--primary); color: var(--on-primary); box-shadow: none; }
+.dp-cell:disabled { opacity: .3; cursor: not-allowed; }

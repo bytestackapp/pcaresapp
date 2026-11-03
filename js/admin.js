@@ -68,25 +68,22 @@
   /* ---------- users ---------- */
   function users(box) {
     const list = S.profiles.filter(p => p.status !== 'pending');
-    box.innerHTML = `<section class="card"><div class="table-wrap"><table class="tbl stack"><thead><tr><th>Name</th><th>Hospital</th><th>Role</th><th>Status</th><th>Override</th><th></th></tr></thead><tbody>${list.map(p => {
+    box.innerHTML = `<section class="card"><div class="table-wrap"><table class="tbl stack"><thead><tr><th>Name</th><th>Hospital</th><th>Role</th><th>Status</th><th class="actions">Action</th></tr></thead><tbody>${list.map(p => {
       const self = p.id === me.id;
       return `<tr>
         <td data-label="Name"><strong>${esc(p.full_name)}</strong>${self ? ' <span class="badge">You</span>' : ''}<br><span class="muted small">@${esc(p.username)} · ${esc(p.email)}</span></td>
         <td data-label="Hospital">${esc(hname(p.hospital_id))}</td>
         <td data-label="Role">${p.role === 'admin' ? '<span class="badge badge-blue">Administrator</span>' : '<span class="badge">Staff</span>'}</td>
         <td data-label="Status">${statusBadge(p.status)}</td>
-        <td data-label="Override"><label class="switch" title="Allow this user to use override mode"><input type="checkbox" data-ovr="${p.id}" ${p.can_override ? 'checked' : ''} ${p.role === 'admin' ? 'disabled' : ''} aria-label="Allow override for ${esc(p.full_name)}"><span class="switch-ui"></span></label></td>
-        <td class="actions">${self ? '' : `
-          <button class="btn btn-ghost btn-sm" data-role="${p.id}">${p.role === 'admin' ? 'Remove admin' : 'Make admin'}</button>
-          <button class="btn btn-ghost btn-sm" data-susp="${p.id}">${p.status === 'approved' ? 'Suspend' : 'Reactivate'}</button>`}</td></tr>`;
+        <td class="actions">
+          <button class="icon-btn" data-edit="${p.id}" title="Edit user" aria-label="Edit ${esc(p.full_name)}">${icon('edit', 18)}</button>${self ? '' : `
+          <button class="icon-btn" data-role="${p.id}" title="${p.role === 'admin' ? 'Remove admin' : 'Make admin'}" aria-label="${p.role === 'admin' ? 'Remove admin' : 'Make admin'}">${icon(p.role === 'admin' ? 'shieldOff' : 'shield', 18)}</button>
+          <button class="icon-btn" data-susp="${p.id}" title="${p.status === 'approved' ? 'Suspend' : 'Reactivate'}" aria-label="${p.status === 'approved' ? 'Suspend' : 'Reactivate'}">${icon(p.status === 'approved' ? 'lock' : 'userCheck', 18)}</button>
+          <button class="icon-btn danger" data-del="${p.id}" title="Delete user" aria-label="Delete ${esc(p.full_name)}">${icon('trash', 18)}</button>`}</td></tr>`;
     }).join('')}</tbody></table></div></section>`;
-    $$('[data-ovr]', box).forEach(i => i.addEventListener('change', async () => {
-      try { const row = await API.admin.setProfile(i.dataset.ovr, { can_override: i.checked }); S.profiles = S.profiles.map(p => p.id === row.id ? row : p); UI.toast('Override permission saved.', 'success'); }
-      catch (e) { i.checked = !i.checked; UI.toast(e.message, 'error'); }
-    }));
     $$('[data-role]', box).forEach(b => b.addEventListener('click', async () => {
       const p = S.profiles.find(x => x.id === b.dataset.role), to = p.role === 'admin' ? 'user' : 'admin';
-      if (await UI.confirm({ title: to === 'admin' ? 'Make administrator?' : 'Remove administrator?', confirmText: 'Confirm', message: `<p><strong>${esc(p.full_name)}</strong> ${to === 'admin' ? 'will be able to approve accounts and change app settings.' : 'will lose access to the Admin page.'}</p>` })) {
+      if (await UI.confirm({ title: to === 'admin' ? 'Make administrator?' : 'Remove administrator?', confirmText: 'Confirm', iconName: 'shield', message: `<p><strong>${esc(p.full_name)}</strong> ${to === 'admin' ? 'will be able to approve accounts and change app settings.' : 'will lose access to the Admin page.'}</p>` })) {
         try { const row = await API.admin.setProfile(p.id, { role: to }); S.profiles = S.profiles.map(x => x.id === row.id ? row : x); UI.toast('Role updated.', 'success'); } catch (e) { UI.toast(e.message, 'error'); }
         draw();
       }
@@ -96,23 +93,62 @@
       if (!suspend || await UI.confirm({ title: 'Suspend this account?', danger: true, confirmText: 'Suspend', message: `<p><strong>${esc(p.full_name)}</strong> will be signed out and cannot sign in until you reactivate the account.</p>` }))
         setStatus(p.id, suspend ? 'suspended' : 'approved');
     }));
+    $$('[data-del]', box).forEach(b => b.addEventListener('click', async () => {
+      const p = S.profiles.find(x => x.id === b.dataset.del);
+      if (!(await UI.confirm({ title: 'Delete this user?', danger: true, confirmText: 'Delete user', iconName: 'trash', message: `<p><strong>${esc(p.full_name)}</strong> (@${esc(p.username)}) will be removed and can no longer sign in. This cannot be undone.</p><p class="muted small">Entries saved on the laptops are not affected.</p>` }))) return;
+      try { await API.admin.deleteUser(p.id); S.profiles = S.profiles.filter(x => x.id !== p.id); UI.toast('User deleted.', 'success'); }
+      catch (e) { UI.toast(e.message, 'error', 5000); }
+      draw();
+    }));
+    $$('[data-edit]', box).forEach(b => b.addEventListener('click', () => {
+      const p = S.profiles.find(x => x.id === b.dataset.edit);
+      let hf;
+      const m = UI.modal({
+        title: 'Edit user', headIcon: 'edit', size: 'sm',
+        body: `<div class="field"><label class="label" for="euName">Full name</label><input class="input" id="euName" value="${esc(p.full_name)}"></div>
+          <div class="field"><label class="label" for="euUser">Username</label><input class="input" id="euUser" value="${esc(p.username)}" autocapitalize="none" spellcheck="false"></div>
+          <div class="field"><span class="label" id="euHospLabel">Hospital</span><button type="button" class="select-btn" id="euHosp" aria-labelledby="euHospLabel" aria-haspopup="dialog"><span class="sel-text">Select hospital</span><span id="euChev"></span></button></div>
+          <div class="field"><label class="label" for="euPos">Position</label><input class="input" id="euPos" value="${esc(p.position || '')}"></div>
+          <div class="field"><label class="label" for="euTel">Contact number</label><input class="input" id="euTel" type="tel" value="${esc(p.contact_no || '')}"></div>
+          <p class="help">The email address cannot be changed here.</p>`,
+        footer: [{ label: 'Cancel', className: 'btn-ghost' }, { label: 'Save changes', className: 'btn-primary', onClick: async (h, btn) => {
+          const name = $('#euName', h.el).value.trim(), uname = $('#euUser', h.el).value.trim().toLowerCase();
+          if (!name) { UI.toast('Enter the full name.', 'error'); return false; }
+          if (!/^[a-z0-9._]{3,24}$/.test(uname)) { UI.toast('Username must be 3–24 letters, numbers, dots or underscores.', 'error'); return false; }
+          setBusy(btn, true, 'Saving');
+          try {
+            if (uname !== p.username && !(await API.usernameAvailable(uname))) throw new Error('That username is already taken.');
+            const hosp = hf.get();
+            const row = await API.admin.setProfile(p.id, { full_name: name, username: uname, hospital_id: hosp ? hosp.id : p.hospital_id, position: $('#euPos', h.el).value.trim() || null, contact_no: $('#euTel', h.el).value.trim() || null });
+            S.profiles = S.profiles.map(x => x.id === row.id ? row : x); UI.toast('User updated.', 'success');
+          } catch (err) { UI.toast(err.message, 'error', 5000); setBusy(btn, false); return false; }
+          draw();
+        } }]
+      });
+      hf = UI.hospitalField($('#euHosp', m.el));
+      $('#euChev', m.el).innerHTML = icon('chevronDown', 18);
+      hf.set(S.hospitals.find(h => h.id === p.hospital_id) || null);
+    }));
   }
 
   /* ---------- hospitals ---------- */
   function hospitals(box) {
     box.innerHTML = `<div class="grid grid-main">
-      <section class="card"><div class="table-wrap"><table class="tbl stack"><thead><tr><th>Hospital</th><th>Status</th><th></th></tr></thead><tbody>${S.hospitals.map(h => `<tr>
+      <section class="card"><div class="table-wrap"><table class="tbl stack"><thead><tr><th>Hospital</th><th>Short Name</th><th>Status</th><th></th></tr></thead><tbody>${S.hospitals.map(h => `<tr>
         <td data-label="Hospital"><strong>${esc(h.name)}</strong></td>
+        <td data-label="Short Name">${h.short_name ? esc(h.short_name) : '<span class="muted">—</span>'}</td>
         <td data-label="Status">${h.is_active ? '<span class="badge badge-green">Active</span>' : '<span class="badge">Hidden</span>'}</td>
-        <td class="actions"><button class="btn btn-ghost btn-sm" data-ren="${h.id}">Rename</button> <button class="btn btn-ghost btn-sm" data-tog="${h.id}">${h.is_active ? 'Hide' : 'Show'}</button></td></tr>`).join('') || '<tr><td colspan="4" class="empty-cell"><div class="empty-mini"><p>No hospitals yet.</p></div></td></tr>'}</tbody></table></div></section>
-      <section class="card card-pad" style="align-self:start"><h3 style="margin-bottom:.2rem">Add hospitals</h3><p class="muted small">One name per line. They appear in the login and sign-up pickers.</p>
-        <div class="field"><textarea class="input" id="hospNames" rows="5" placeholder="Hospital name"></textarea></div>
+        <td class="actions"><button class="btn btn-ghost btn-sm" data-ren="${h.id}">Edit</button> <button class="btn btn-ghost btn-sm" data-tog="${h.id}">${h.is_active ? 'Hide' : 'Show'}</button></td></tr>`).join('') || '<tr><td colspan="4" class="empty-cell"><div class="empty-mini"><p>No hospitals yet.</p></div></td></tr>'}</tbody></table></div></section>
+      <section class="card card-pad" style="align-self:start"><h3 style="margin-bottom:.2rem">Add hospital</h3><p class="muted small">It appears in the login and sign-up pickers.</p>
+        <div class="field"><label class="label" for="hospNew">Hospital name</label><input class="input" id="hospNew" placeholder="Hospital name"></div>
+        <div class="field"><label class="label" for="hospShort">Short name</label><input class="input caps" id="hospShort" placeholder="e.g. BGH" maxlength="12"></div>
         <button class="btn btn-primary" id="hospAdd">${icon('plus', 18)}<span>Add to list</span></button></section></div>`;
+    $('#hospShort').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase(); });
     $('#hospAdd').addEventListener('click', async (e) => {
-      const names = $('#hospNames').value.split('\n').map(x => x.trim()).filter(Boolean);
-      if (!names.length) return UI.toast('Type at least one hospital name.', 'error');
+      const name = $('#hospNew').value.trim(), short = $('#hospShort').value.trim();
+      if (!name) return UI.toast('Type the hospital name.', 'error');
       setBusy(e.currentTarget, true, 'Adding');
-      try { await API.hospitals.add(names); S.hospitals = await API.hospitals.list(true); UI.toast(`${names.length} added.`, 'success'); } catch (err) { UI.toast(err.message, 'error', 5000); }
+      try { await API.hospitals.add([{ name, short_name: short }]); S.hospitals = await API.hospitals.list(true); UI.toast('Hospital added.', 'success'); } catch (err) { UI.toast(err.message, 'error', 5000); }
       draw();
     });
     $$('[data-tog]', box).forEach(b => b.addEventListener('click', async () => {
@@ -122,10 +158,12 @@
     }));
     $$('[data-ren]', box).forEach(b => b.addEventListener('click', () => {
       const h = S.hospitals.find(x => x.id === b.dataset.ren);
-      UI.modal({ title: 'Rename hospital', size: 'sm', body: `<div class="field"><label class="label" for="rnName">Hospital name</label><input class="input" id="rnName" value="${esc(h.name)}"></div>`,
+      UI.modal({ title: 'Edit hospital', headIcon: 'building', size: 'sm', body: `<div class="field"><label class="label" for="rnName">Hospital name</label><input class="input" id="rnName" value="${esc(h.name)}"></div>
+        <div class="field"><label class="label" for="rnShort">Short name</label><input class="input" id="rnShort" value="${esc(h.short_name || '')}" maxlength="12" style="text-transform:uppercase"></div>`,
         footer: [{ label: 'Cancel', className: 'btn-ghost' }, { label: 'Save', className: 'btn-primary', onClick: async (m) => {
           const v = $('#rnName', m.el).value.trim(); if (!v) return false;
-          try { await API.hospitals.update(h.id, { name: v }); S.hospitals = await API.hospitals.list(true); UI.toast('Hospital renamed.', 'success'); } catch (err) { UI.toast(err.message, 'error'); return false; }
+          const sn = $('#rnShort', m.el).value.trim().toUpperCase() || null;
+          try { await API.hospitals.update(h.id, { name: v, short_name: sn }); S.hospitals = await API.hospitals.list(true); UI.toast('Hospital saved.', 'success'); } catch (err) { UI.toast(err.message, 'error'); return false; }
           draw();
         } }] });
     }));
@@ -133,18 +171,18 @@
 
   /* ---------- settings ---------- */
   function settings(box) {
-    const s = S.settings;
-    box.innerHTML = `<section class="card card-pad" style="max-width:640px"><h3 style="margin-bottom:.2rem">Override mode</h3><p class="muted small">Lets staff record or correct entries for a past date.</p>
-      <div class="field"><label class="switch"><input type="checkbox" id="setOvr" ${s.override_enabled !== false ? 'checked' : ''}><span class="switch-ui"></span><span>Allow override mode</span></label></div>
-      <div class="field" style="max-width:260px"><label class="label" for="setTimeout">Turn off automatically after (minutes)</label><input class="input" id="setTimeout" type="number" min="5" max="240" value="${esc(s.override_timeout_min || 30)}"></div>
-      <h3 style="margin:1.25rem 0 .2rem">Announcement</h3><p class="muted small">Shown at the top of every user’s dashboard. Leave empty for none.</p>
+    const s = S.settings, today = L.todayStr();
+    box.innerHTML = `<section class="card card-pad" style="max-width:640px"><h3 style="margin-bottom:.2rem">Announcement</h3><p class="muted small">Shown at the top of every user’s dashboard. Leave empty for none.</p>
       <div class="field"><textarea class="input" id="setNote" rows="2" maxlength="240">${esc(s.announcement || '')}</textarea></div>
+      <div class="field" style="max-width:260px"><label class="label" for="setExp">Expires on</label><input type="date" class="input" id="setExp" value="${esc(s.announcement_expires || '')}" min="${today}"></div>
+      <p class="help" style="margin-top:-.5rem;margin-bottom:1rem">The announcement is shown until the end of this date, then disappears by itself. Leave empty to keep it showing.</p>
       <button class="btn btn-primary" id="setSave">Save settings</button></section>`;
+    UI.datePicker($('#setExp'), { placeholder: 'No expiry' });
     $('#setSave').addEventListener('click', async (e) => {
-      const mins = Math.min(240, Math.max(5, parseInt($('#setTimeout').value, 10) || 30));
+      const note = $('#setNote').value.trim(), exp = note ? $('#setExp').value : '';
       setBusy(e.currentTarget, true, 'Saving');
       try {
-        await API.settings.set('override_enabled', $('#setOvr').checked); await API.settings.set('override_timeout_min', mins); await API.settings.set('announcement', $('#setNote').value.trim());
+        await API.settings.set('announcement', note); await API.settings.set('announcement_expires', exp);
         S.settings = await API.settings.all(); UI.toast('Settings saved.', 'success');
       } catch (err) { UI.toast(err.message, 'error', 5000); }
       draw();
