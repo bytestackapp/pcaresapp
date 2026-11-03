@@ -27,7 +27,6 @@
 
   const notes = [];
   if (settings.announcement && (!settings.announcement_expires || today <= settings.announcement_expires)) notes.push(`<div class="alert alert-info">${icon('info', 18)}<span>${esc(settings.announcement)}</span></div>`);
-  if (Override.isOn()) notes.push(`<div class="alert alert-warn">${icon('zap', 18)}<span>Override mode is on for ${esc(L.fmtDate(Override.get().date, 'long'))}. Turn it off from the banner above when you are done.</span></div>`);
   $('#notes').innerHTML = notes.join('');
 
   let rows = [];
@@ -36,7 +35,7 @@
 
   const todays = rows.filter(r => r.entry_date === today), s = L.computeSummary(todays);
   $('#heroCount').textContent = todays.length;
-  const pcf1 = todays.filter(e => e.pcf1_reason).length;
+  const pcf1 = todays.filter(e => e.pcf1_reason && e.member_category !== 'NM').length;
   $('#stats').innerHTML = [['Inpatient', s.totals.inpatient, 'blue'], ['Outpatient', s.totals.outpatient, 'teal'], ['Walk-in', s.walkIn, 'accent'], ['PPFF', s.ppff, 'accent'], ['PCF1 issued', pcf1, '']]
     .map(([l, v, c]) => `<div class="stat ${c}"><b>${v}</b><span>${l}</span></div>`).join('');
 

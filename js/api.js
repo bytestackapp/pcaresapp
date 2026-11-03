@@ -335,6 +335,12 @@
         try { await saveEntries(); } catch (e) { S.entries[i] = old; throw e; }
         return { ...rec };
       },
+      async markPrinted(ids, controlNo) {
+        await open();
+        const set = new Set(ids), now = new Date().toISOString(), old = [];
+        S.entries.forEach((e, i) => { if (set.has(e.id)) { old.push([i, e]); S.entries[i] = { ...e, control_no: controlNo, printed_at: now }; } });
+        try { await saveEntries(); } catch (err) { old.forEach(([i, e]) => { S.entries[i] = e; }); throw err; }
+      },
       async remove(id) {
         await open();
         const i = S.entries.findIndex(e => e.id === id);
@@ -345,42 +351,8 @@
       }
     },
 
-    /* ---------- daily sheet details (files on this laptop) ---------- */
-    sheets: {
-      async get(hospitalId, date) { await open(); const r = S.sheets.find(s => s.id === hospitalId + '|' + date); return r ? { ...r } : null; },
-      async nextSeries(hospitalId, date) {
-        await open();
-        const ym = date.slice(0, 7);
-        const used = S.sheets.filter(s => s.hospital_id === hospitalId && String(s.sheet_date).slice(0, 7) === ym)
-          .map(r => parseInt(String(r.control_no || '').split('-')[2], 10)).filter(n => !isNaN(n));
-        return String((used.length ? Math.max(...used) : 0) + 1).padStart(3, '0');
-      },
-      async upsert(row) {
-        await open();
-        const rec = { ...row, id: row.hospital_id + '|' + row.sheet_date, updated_at: new Date().toISOString() };
-        const i = S.sheets.findIndex(s => s.id === rec.id);
-        const old = i >= 0 ? S.sheets[i] : null;
-        if (i >= 0) S.sheets[i] = rec; else S.sheets.push(rec);
-        try { await saveSheets(); } catch (e) { if (old) S.sheets[i] = old; else S.sheets.pop(); throw e; }
-        return { ...rec };
-      }
-    },
-
     /* ---------- the data folder, backups and restore ---------- */
     files: {
-      async info() {
-        let name = S.root ? S.root.name : null;
-        if (!name) { try { const h = await kvGet('root'); name = h && h.name; } catch (e) {} }
-        return { name: name || null };
-      },
-      async chooseFolder() {
-        if (!window.showDirectoryPicker) throw new Error('Saving to a folder needs Google Chrome or Microsoft Edge on a laptop or desktop computer.');
-        const h = await askFolder(null);
-        if (!h) return null;
-        await initFolders(h); await kvSet('root', h);
-        S.autoTried = false;
-        return h.name;
-      },
       async backupNow() { await ensure(); return makeBackup('backup'); },
       async listBackups() { await ensure(); return listBackups(); },
       async restore(name) { await ensure(); return restoreBackup(name); }
@@ -409,8 +381,6 @@
       async profiles() { return ok(await sb.from('profiles').select('*').order('created_at', { ascending: false })); },
       async setProfile(id, fields) { return ok(await sb.from('profiles').update(fields).eq('id', id).select().single()); },
       async deleteUser(id) { const { error } = await sb.rpc('admin_delete_user', { p_id: id }); fail(error); },
-      async audit() { return []; },        // entries live on each user's laptop, so there is no central log
-      async entriesOn() { return []; }
     }
   };
 

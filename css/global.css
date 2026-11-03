@@ -541,35 +541,8 @@ html.override .auth-card::before { background: linear-gradient(90deg, #B42335, #
 .splash-loading { font-size: .85rem; letter-spacing: .2em; color: var(--slate); }
 .splash-waves { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 26vh; min-height: 140px; z-index: 1; }
 
-/* ---------- 7. Override mode -------------------------------------------- */
-html.override {
-  --bg: #FBEEEC; --surface-2: #FDF6F5; --surface-3: #F8E2E0; --border: #EBD2CF; --border-strong: #DDB8B4;
-  --primary: #B42335; --primary-hover: #981B2B; --primary-soft: #FBE1E3; --on-primary: #fff; --brand: #E0606C;
-  --tint-mint: #FBE4E2; --tint-butter: #FCE9E0; --tint-sky: #F7E3E8; --tint-peach: #FBE6E4;
-}
-html.override[data-theme='dark'] {
-  --bg: #1A0F12; --surface: #25151A; --surface-2: #2C181E; --surface-3: #3A1F27; --border: #4A2831; --border-strong: #63353F;
-  --primary: #FF7885; --primary-hover: #FF909A; --primary-soft: #43202A; --on-primary: #2A0A10; --brand: #FF7885;
-  --tint-mint: #3A1F27; --tint-butter: #3A2127; --tint-sky: #371E2A; --tint-peach: #3A2024;
-}
-html.override body { background-image: repeating-linear-gradient(135deg, rgba(180, 35, 53, .05) 0 14px, transparent 14px 28px); background-attachment: fixed; }
-html.override body::after { content: ''; position: fixed; inset: 0; border: 3px solid var(--primary); pointer-events: none; z-index: 190; }
-html.override .sidebar, html.override .topbar { border-color: var(--border-strong); }
-html.override .topbar::after { background: linear-gradient(90deg, #B42335, #E0606C); }
-html.override .avatar { background: linear-gradient(140deg, #E0606C, var(--primary)); color: #fff; }
-html.override .hero { background: linear-gradient(120deg, #4A0F1A, #7A1A2B 60%, #A02A3B); }
-html.override .hero .btn-primary { background: #fff; color: #7A1A2B; }
-html.override .auth-card::before { background: linear-gradient(90deg, #B42335, #E0606C); }
-html.override .hbar-fill, html.override .col.today .col-bar { background: var(--primary); }
-html.override .brand-logo { filter: grayscale(.2); }
-.override-banner {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 120; display: flex; align-items: center; gap: .7rem; flex-wrap: wrap;
-  padding: .6rem 1.25rem; background: var(--primary); color: var(--on-primary); font-size: .92rem;
-  background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.1) 0 12px, transparent 12px 24px);
-}
-.override-banner .ov-actions { margin-left: auto; display: flex; gap: .5rem; }
-html.override[data-theme='dark'] .btn-light { background: #2A0A10; color: #FF9AA4; }
-html.override[data-theme='dark'] .override-banner .btn-light { background: rgba(0,0,0,.28); color: var(--on-primary); }
+/* ---------- 7. Override mode (removed)------------------------------------ */
+
 
 /* ---------- 8. Responsive ------------------------------------------------ */
 @media (max-width: 1100px) {

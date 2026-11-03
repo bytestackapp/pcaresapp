@@ -1,4 +1,4 @@
-/* Runs in <head> before first paint: applies light/dark theme and override mode. */
+/* Runs in <head> before first paint: applies light/dark theme. */
 (function () {
   var root = document.documentElement;
   function resolve() {
@@ -13,8 +13,4 @@
     (mq.addEventListener ? mq.addEventListener.bind(mq, 'change') : mq.addListener.bind(mq))(resolve);
   }
   window.__applyTheme = resolve;
-  try {
-    var o = JSON.parse(sessionStorage.getItem('ls_override') || 'null');
-    if (o && o.on) root.classList.add('override');
-  } catch (e) {}
 })();

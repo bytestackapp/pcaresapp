@@ -105,7 +105,7 @@
       d.txt('Date', 538, 30, 680, 59, { bold: true, size: 8.4, narrow: true });
       d.txt(L.fmtDate(day.date, 'long').toUpperCase(), 680, 30, 840, 59, { size: 9, align: 'left', pad: 6, nowrap: true });
       // grid
-      const xs = [30, 65, 207, 349, 491, 586, 680, 712, 745, 840], top = 74, hb = 117, bot = 915, rh = (bot - hb) / N;
+      const top = 74, hb = 117, bot = 915, rh = (bot - hb) / N;
       d.box(30, top, 840, bot); d.hl(30, 840, hb, OUT);
       [65, 207, 349, 491, 586, 680, 745].forEach(x => d.vl(x, top, bot));
       d.vl(712, 93, bot); d.hl(680, 745, 93);

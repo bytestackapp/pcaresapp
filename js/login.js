@@ -8,6 +8,7 @@
   const hospital = UI.hospitalField($('#hospitalBtn'));
 
   if (!API.configured) showAlert(alertBox, 'This app is not connected to Supabase yet. Add your project URL and anon key in js/config.js.', 'warn');
+  if (!window.showDirectoryPicker) showAlert(alertBox, 'PCaresApp works only in Google Chrome or Microsoft Edge on a laptop or desktop computer.', 'warn');
 
   // Message from a redirect (pending / rejected / suspended / session ended)
   const reason = new URLSearchParams(location.search).get('reason');

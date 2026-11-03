@@ -1,9 +1,9 @@
 /* Admin: approve sign-ups, manage users and hospitals, app settings, audit log. */
 (async function () {
   const ctx = await Shell.init({ adminOnly: true });
-  const me = ctx.profile, L = Logic, C = APP_CONFIG, { $, $$, esc, icon, setBusy } = UI;
+  const me = ctx.profile, L = Logic, { $, $$, esc, icon, setBusy } = UI;
   const root = $('#page');
-  const S = { tab: (location.hash || '#approvals').slice(1), profiles: [], hospitals: [], settings: ctx.settings, audit: [], messages: [], today: {} };
+  const S = { tab: (location.hash || '#approvals').slice(1), profiles: [], hospitals: [], settings: ctx.settings, messages: [] };
   const TABS = [['approvals', 'Approvals', 'userCheck'], ['users', 'Users', 'users'], ['hospitals', 'Hospitals', 'building'], ['messages', 'Messages', 'mail'], ['settings', 'Settings', 'sliders']];
   if (!TABS.some(t => t[0] === S.tab)) S.tab = 'approvals';
   const hname = (id) => (S.hospitals.find(h => h.id === id) || {}).name || '—';
@@ -13,7 +13,6 @@
   async function loadAll() {
     try {
       [S.profiles, S.hospitals, S.messages] = await Promise.all([API.admin.profiles(), API.hospitals.list(true), API.support.all().catch(() => [])]);
-      const rows = await API.admin.entriesOn(L.todayStr()); S.today = {}; rows.forEach(r => { S.today[r.hospital_id] = (S.today[r.hospital_id] || 0) + 1; });
     } catch (e) { UI.toast(e.message, 'error', 5000); }
   }
 
@@ -26,14 +25,13 @@
     const openMsgs = S.messages.filter(m => m.status === 'open').length;
     const c2 = $('[data-count="messages"]', root); if (c2) { c2.hidden = !openMsgs; c2.textContent = openMsgs; }
   }
-  function drawBody() { ({ approvals, users, hospitals, messages, settings, audit })[S.tab]($('#tabBody')); }
+  function drawBody() { ({ approvals, users, hospitals, messages, settings })[S.tab]($('#tabBody')); }
   function draw() {
     if (!$('.tabs', root)) {
       root.innerHTML = `<div class="tabs" role="tablist">${tabsHTML()}</div><div id="tabBody"></div>`;
       $$('.tab', root).forEach(b => b.addEventListener('click', async () => {
         if (b.dataset.tab === S.tab) return;
         S.tab = b.dataset.tab; history.replaceState(null, '', '#' + S.tab);
-        if (S.tab === 'audit') await loadAudit();
         markTabs(); tabPill.sync(true); drawBody();
       }));
       tabPill = UI.pill($('.tabs', root), '.tab.active');
@@ -45,7 +43,6 @@
   /* ---------- approvals ---------- */
   function approvals(box) {
     const list = S.profiles.filter(p => p.status === 'pending');
-    const opts = (sel) => '<option value="">Select hospital</option>' + S.hospitals.filter(h => h.is_active).map(h => `<option value="${h.id}" ${h.id === sel ? 'selected' : ''}>${esc(h.name)}</option>`).join('');
     box.innerHTML = list.length ? `<section class="card"><div class="table-wrap"><table class="tbl stack"><thead><tr><th>Name</th><th>Email</th><th>Requested</th><th></th></tr></thead><tbody>${list.map(p => `<tr>
       <td data-label="Name"><strong>${esc(p.full_name)}</strong><br><span class="muted small">@${esc(p.username)}${p.position ? ' · ' + esc(p.position) : ''}</span></td>
       <td data-label="Email">${esc(p.email)}</td>
@@ -236,20 +233,6 @@
     });
   }
 
-  /* ---------- audit ---------- */
-  async function loadAudit() { try { S.audit = await API.admin.audit(150); } catch (e) { UI.toast(e.message, 'error'); } }
-  function audit(box) {
-    const verb = { INSERT: 'Added', UPDATE: 'Edited', DELETE: 'Deleted' };
-    box.innerHTML = S.audit.length ? `<section class="card"><div class="table-wrap"><table class="tbl stack"><thead><tr><th>When</th><th>Who</th><th>Action</th><th>Sheet date</th><th>Entry</th><th></th></tr></thead><tbody>${S.audit.map(a => `<tr>
-      <td data-label="When" class="nowrap">${esc(new Date(a.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: C.TIMEZONE }))}</td>
-      <td data-label="Who">${esc(pname(a.user_id))}</td><td data-label="Action">${esc(verb[a.action] || a.action)}</td>
-      <td data-label="Sheet date" class="nowrap">${esc(L.fmtDate(a.entry_date))}</td>
-      <td data-label="Entry">${esc((a.details && a.details.client) || '')} ${a.details && a.details.category ? `<span class="badge">${esc(a.details.category)}</span>` : ''}</td>
-      <td data-label="">${a.is_override ? '<span class="badge badge-red">Override</span>' : ''}</td></tr>`).join('')}</tbody></table></div></section>`
-      : `<section class="card"><div class="empty">${icon('list')}<h4>No activity yet</h4><p>Every added, edited and deleted entry is recorded here, with override entries flagged.</p></div></section>`;
-  }
-
   await loadAll();
-  if (S.tab === 'audit') await loadAudit();
   draw();
 })();

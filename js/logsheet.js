@@ -7,7 +7,7 @@
   const today = () => L.todayStr();
   const PAGE = 50;
   const INQUIRIES = ['DOC REQUIREMENT', 'ADD DEPENDENT', 'PHIC ELIGIBILITY'];
-  const state = { all: [], view: [], page: 1, search: '', loading: true, error: '', filter: { type: 'none', hospital: '', from: '', to: '' } };
+  const state = { all: [], view: [], page: 1, search: '', loading: true, error: '', filter: { hospital: '', from: '', to: '' } };
   const sigCache = new Map();
 
   /* ============================== page skeleton ============================== */
@@ -57,7 +57,7 @@
     return state.all.filter(e => {
       if (byH && e.hospital_id !== f.hospital) return false;
       if (byD && (e.entry_date < f.from || e.entry_date > f.to)) return false;
-      if (q && ![e.client_name, e.member_name, e.patient_name, e.nature_of_inquiry, e.remarks, e.contact_no, e.hospital_name].join(' ').toLowerCase().includes(q)) return false;
+      if (q && ![e.client_name, e.member_name, e.patient_name, e.nature_of_inquiry, e.remarks, e.contact_no, e.hospital_name, e.control_no].join(' ').toLowerCase().includes(q)) return false;
       return true;
     });
   }
@@ -105,6 +105,7 @@
   const noCell = (no) => `<td class="no" data-label="No.">${no}</td>`;
   const dateCell = (e) => td('Date entered', esc(L.fmtDate(e.entry_date)), 'nowrap', e.entry_date);
   const hospCell = (e) => td('Hospital', esc(e.hospital_name), '', e.hospital_name);
+  const ctrlCell = (e) => td('Control no.', e.control_no ? '<span class="badge badge-blue">' + esc(e.control_no) + '</span>' : '', 'nowrap', e.control_no);
 
   function renderTable() {
     const wrap = $('#tableWrap');
@@ -119,13 +120,13 @@
     }
     if (!state.view.length) {
       wrap.innerHTML = `<div class="empty">${icon('search')}<h4>No matches</h4><p>No entry matches your filter or search.</p>${filterActive() ? '<button class="btn btn-ghost" id="clearFilter">Clear filter and search</button>' : ''}</div>`;
-      const b = $('#clearFilter'); if (b) b.addEventListener('click', () => { state.filter = { type: 'none', hospital: '', from: '', to: '' }; state.search = ''; $('#search').value = ''; state.page = 1; renderAll(); });
+      const b = $('#clearFilter'); if (b) b.addEventListener('click', () => { state.filter = { hospital: '', from: '', to: '' }; state.search = ''; $('#search').value = ''; state.page = 1; renderAll(); });
       return;
     }
     const start = (state.page - 1) * PAGE;
     const rows = state.view.slice(start, start + PAGE).map((e, i) => ({ e, no: state.view.length - (start + i) }));
-    wrap.innerHTML = `<table class="tbl ls-table"><thead><tr><th>No.</th><th>Date entered</th><th>Hospital</th><th>Name of client</th><th>Name of PhilHealth member</th><th>Name of patient</th><th>Contact</th><th>Signature</th><th>Patient is</th><th>Admission date</th><th>Category</th><th>Status</th><th>Nature of inquiry</th><th>Service</th><th>Walk-in</th><th>PPFF</th><th>PCF1</th><th>Remarks</th><th>Action</th></tr></thead><tbody>${rows.map(({ e, no }) => `<tr>
-      ${noCell(no)}${dateCell(e)}${hospCell(e)}
+    wrap.innerHTML = `<table class="tbl ls-table"><thead><tr><th>No.</th><th>Date entered</th><th>Control no.</th><th>Hospital</th><th>Name of client</th><th>Name of PhilHealth member</th><th>Name of patient</th><th>Contact</th><th>Signature</th><th>Patient is</th><th>Admission date</th><th>Category</th><th>Status</th><th>Nature of inquiry</th><th>Service</th><th>Walk-in</th><th>PPFF</th><th>PCF1</th><th>Remarks</th><th>Action</th></tr></thead><tbody>${rows.map(({ e, no }) => `<tr>
+      ${noCell(no)}${dateCell(e)}${ctrlCell(e)}${hospCell(e)}
       ${td('Client', esc(e.client_name), 'name', e.client_name)}
       ${td('PhilHealth member', esc(e.member_name), '', e.member_name)}
       ${td('Patient', esc(e.patient_name), '', e.patient_name)}
@@ -354,11 +355,6 @@
         const a = inp.selectionStart, b = inp.selectionEnd, u = inp.value.toUpperCase();
         if (u !== inp.value) { inp.value = u; try { inp.setSelectionRange(a, b); } catch (x) {} }
       }));
-      // tapping a selected service again clears it
-      $$('input[name="svc"]', el).forEach(r => {
-        r.addEventListener('pointerdown', () => { r._was = r.checked; });
-        r.addEventListener('click', () => { if (r._was) r.checked = false; r._was = false; });
-      });
     }
     let touchedPatient = !!e.patient_name;
     q('#fPatient').addEventListener('input', () => { touchedPatient = true; });
@@ -406,7 +402,7 @@
     let e = entry || {};
     if (entry && entry.has_signature) { try { e = { ...entry, signature: await API.entries.signature(entry.id) }; } catch (x) {} }
     const h = UI.modal({
-      title: entry ? 'Edit entry' : 'Add entry', headIcon: entry ? 'edit' : 'plus', size: '', className: 'modal-entry', persistent: false,
+      title: entry ? 'Edit entry' : 'Add entry', headIcon: entry ? 'edit' : 'plus', size: '', className: 'modal-entry', persistent: true,
       body: formHTML(e),
       footer: entry
         ? [{ label: 'Cancel', className: 'btn-ghost' }, { id: 'entrySave', label: 'Save changes', className: 'btn-primary', onClick: (hh, b) => save(hh, b, entry, false) }]
@@ -447,7 +443,7 @@
     const e = state.all.find(x => x.id === id); if (!e) return;
     const ok = await UI.confirm({
       title: 'Delete this entry?', danger: true, confirmText: 'Delete entry', iconName: 'trash',
-      message: `<p><strong>${esc(e.client_name)}</strong> (${esc(L.fmtDate(e.entry_date, 'long'))}, ${esc(e.hospital_name || '')}) will be removed. This cannot be undone. Your latest backup still has it.</p>`
+      message: `<p><strong>${esc(e.client_name)}</strong> (${esc(L.fmtDate(e.entry_date, 'long'))}, ${esc(e.hospital_name || '')}) will be removed. This cannot be undone. Make sure you have a recent backup if you may need it again.</p>`
     });
     if (!ok) return;
     try { await API.entries.remove(id); } catch (err) { UI.toast(err.message, 'error', 5000); return; }
@@ -477,16 +473,27 @@
   }
 
   /* ============================== export ============================== */
+  function nextSeries(ym, hospitalIds) {
+    const used = state.all
+      .filter(e => e.control_no && String(e.control_no).slice(0, 7) === ym && hospitalIds.includes(e.hospital_id))
+      .map(e => parseInt(String(e.control_no).split('-')[2], 10)).filter(n => !isNaN(n));
+    return String((used.length ? Math.max(...used) : 0) + 1).padStart(3, '0');
+  }
+
   function openExportModal() {
     if (!state.view.length) { UI.toast('There are no entries to export.', 'error'); return; }
     const firstDate = state.view.map(e => e.entry_date).sort()[0] || today();
+    const nos = [...new Set(state.view.map(e => e.control_no || ''))];
+    let cy = firstDate.slice(0, 4), cm = firstDate.slice(5, 7), cs = '';
+    if (nos.length === 1 && nos[0]) { [cy, cm, cs] = nos[0].split('-'); }
+    else { cs = nextSeries(cy + '-' + cm, [...new Set(state.view.map(e => e.hospital_id))]); }
     UI.modal({
       title: 'Export PDF', headIcon: 'download', size: 'sm',
       body: `<div id="expAlert" class="alert" hidden></div>
-        <div class="field"><label class="label" for="expCY">Control no.</label>
-          <div class="ctrl-row"><input class="input" id="expCY" value="${esc(firstDate.slice(0, 4))}" maxlength="4" inputmode="numeric" aria-label="Year">–
-            <input class="input" id="expCM" value="${esc(firstDate.slice(5, 7))}" maxlength="2" inputmode="numeric" aria-label="Month">–
-            <input class="input" id="expCS" value="" maxlength="4" inputmode="numeric" aria-label="Series no."></div>
+        <div class="field"><label class="label" for="expCY">Control no. <span class="req">*</span></label>
+          <div class="ctrl-row"><input class="input" id="expCY" value="${esc(cy)}" maxlength="4" inputmode="numeric" aria-label="Year">–
+            <input class="input" id="expCM" value="${esc(cm)}" maxlength="2" inputmode="numeric" aria-label="Month">–
+            <input class="input" id="expCS" value="${esc(cs)}" maxlength="4" inputmode="numeric" aria-label="Series no."></div>
           <span class="help">Year · Month · Series no.</span></div>
         <div class="field"><label class="label" for="expOpdN">No. of times OPD class is conducted</label>
           <input class="input" id="expOpdN" type="number" min="0" inputmode="numeric"></div>
@@ -503,7 +510,23 @@
     if (!window.PDFLib) { UI.showAlert(box, 'The PDF library did not load. Check your internet connection and try again.'); return false; }
     const num = (id) => { const v = $(id, h.el).value.trim(); return v === '' ? null : Math.max(0, parseInt(v, 10) || 0); };
     const cy = $('#expCY', h.el).value.trim(), cm = $('#expCM', h.el).value.trim(), cs = $('#expCS', h.el).value.trim();
-    const control = (cy || cm || cs) ? [cy, cm ? cm.padStart(2, '0') : '', cs ? cs.padStart(3, '0') : ''].join('-') : '';
+    if (!/^\d{4}$/.test(cy) || !/^\d{1,2}$/.test(cm) || !/^\d{1,4}$/.test(cs)) { UI.showAlert(box, 'Enter the full control no.: year, month and series no.'); return false; }
+    const control = cy + '-' + cm.padStart(2, '0') + '-' + cs.padStart(3, '0');
+
+    const ids = new Set(state.view.map(e => e.id));
+    if (state.all.some(e => e.control_no === control && !ids.has(e.id))) {
+      UI.showAlert(box, 'Control no. ' + control + ' is already used for other entries. Use a different series no.'); return false;
+    }
+    const printed = state.view.filter(e => e.control_no);
+    if (printed.length) {
+      const list = [...new Set(printed.map(e => e.control_no))].sort();
+      const go = await UI.confirm({
+        title: 'Some entries were already printed', danger: true, confirmText: 'Print again', iconName: 'alert',
+        message: `<p>${printed.length} of the ${state.view.length} selected entries were already printed under control no. <strong>${list.map(esc).join(', ')}</strong>.</p><p>If you print again and confirm the print-out, these entries will be marked with control no. <strong>${esc(control)}</strong>.</p>`
+      });
+      if (!go) return false;
+    }
+
     const manual = {
       pcare_name: profile.full_name, control_no: control,
       opd_class_count: num('#expOpdN'), opd_class_clients: num('#expOpdC'), ppff_total: num('#expPpff')
@@ -522,7 +545,7 @@
       const names = [...new Set(days.map(d => d.hospital))];
       const label = names.length === 1 ? names[0] : 'Multiple hospitals';
       const bytes = await PDFExport.generate({ days, sheets: { s1: true, s2: true }, hospital: label, logo: C.LOGO_CARES, appName: C.APP_NAME, rowsPerPage: C.ROWS_PER_PAGE });
-      const first = days[0].date, last = days[days.length - 1].date;
+      const first = days[0].date;
       const hl = await API.hospitals.list();
       const hids = [...new Set(gs.map(g => g.hospital_id))];
       const hsel = hl.find(x => x.id === hids[0]);
@@ -533,7 +556,19 @@
       setTimeout(() => URL.revokeObjectURL(url), 4000);
       UI.toast('PDF downloaded.', 'success');
     } catch (err) { UI.showAlert(box, err.message); setBusy(btn, false); return false; }
-    setBusy(btn, false);
+
+    h.close();
+    const okPrint = await UI.confirm({
+      title: 'Is the print-out okay?', confirmText: 'Yes, it is okay', cancelText: 'No, not yet', iconName: 'check',
+      message: `<p>If yes, control no. <strong>${esc(control)}</strong> will be saved on these ${ids.size} entries so you can tell which print-out they belong to.</p><p class="muted small">If no, nothing is saved. You can export again.</p>`
+    });
+    if (okPrint) {
+      try {
+        await API.entries.markPrinted([...ids], control);
+        await load(true);
+        UI.toast('Control no. ' + control + ' saved on ' + ids.size + ' entries.', 'success', 5000);
+      } catch (err) { UI.toast(err.message, 'error', 6000); }
+    }
   }
 
   /* ============================== events ============================== */
