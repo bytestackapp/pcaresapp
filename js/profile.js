@@ -45,9 +45,9 @@
           </section>
         </div>
         <section class="card card-pad" style="align-self:start">
-          <h3 style="margin-bottom:.2rem">Change password</h3><p class="muted small">Use at least 8 characters.</p>
+          <h3 style="margin-bottom:.2rem">Change password</h3><p class="muted small">Use at least 8 characters with upper case, lower case and a number.</p>
           <div id="pwAlert" class="alert" hidden></div>
-          <form id="pwForm" novalidate>
+          <form id="pwForm" novalidate onsubmit="return false">
             <div class="field"><label class="label" for="curPw">Current password</label>
               <div class="input-wrap"><input class="input" id="curPw" type="password" autocomplete="current-password"><button type="button" class="toggle-btn" data-pw-toggle="curPw" aria-label="Show password"></button></div></div>
             <div class="field"><label class="label" for="newPw">New password</label>

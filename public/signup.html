@@ -20,7 +20,7 @@
 
       <section id="panelForm">
         <div id="signupAlert" class="alert" hidden></div>
-        <form id="signupForm" novalidate>
+        <form id="signupForm" novalidate onsubmit="return false">
             <div class="field">
               <label class="label" for="fullName">Full name <span class="req">*</span></label>
               <input class="input" id="fullName" autocomplete="name" placeholder="First and last name" required>
@@ -28,6 +28,7 @@
             <div class="field">
               <label class="label" for="suUsername">Username <span class="req">*</span></label>
               <input class="input" id="suUsername" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="e.g. maria.santos" required>
+              <span class="help" id="unameHelp">3–24 characters: letters, numbers, dot or underscore.</span>
             </div>
             <div class="field span-2">
               <label class="label" for="suEmail">Email <span class="req">*</span></label>

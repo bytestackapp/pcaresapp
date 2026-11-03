@@ -20,6 +20,7 @@
   // live username availability
   const checkName = UI.debounce(async () => {
     const v = $('#suUsername').value.trim().toLowerCase(), help = $('#unameHelp');
+    help.style.color = '';
     if (!v) { help.textContent = '3–24 characters: letters, numbers, dot or underscore.'; return; }
     if (!unameRe.test(v)) { help.textContent = 'Use 3–24 letters, numbers, dots or underscores.'; help.style.color = 'var(--danger)'; return; }
     try {

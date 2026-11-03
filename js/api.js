@@ -22,6 +22,7 @@
     if (/duplicate key.*username|profiles_username_key/i.test(m)) return 'That username is already taken.';
     if (/Failed to fetch|NetworkError|Load failed/i.test(m)) return 'Cannot reach the server. Check your internet connection and try again.';
     if (/password should be at least/i.test(m)) return 'Password must be at least 8 characters.';
+    if (/password should contain at least one character/i.test(m)) return 'Password needs an upper case letter, a lower case letter and a number.';
     return m;
   }
   const fail = (error) => { if (error) { const e = new Error(friendly(error)); e.raw = error; throw e; } };

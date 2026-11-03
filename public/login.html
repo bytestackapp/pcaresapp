@@ -20,7 +20,7 @@
       <!-- Sign in -->
       <section id="panelLogin">
         <div id="loginAlert" class="alert" hidden></div>
-        <form id="loginForm" novalidate>
+        <form id="loginForm" novalidate onsubmit="return false">
           <div class="field">
             <label class="label" for="username">Username</label>
             <input class="input" id="username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Your username" required>
@@ -56,7 +56,7 @@
         <h2 style="font-size:1.2rem;margin-bottom:1.5rem">Reset your password</h2>
         <p class="muted">Enter the email address on your account and we will send you a reset link.</p>
         <div id="forgotAlert" class="alert" hidden></div>
-        <form id="forgotForm" novalidate>
+        <form id="forgotForm" novalidate onsubmit="return false">
           <div class="field" style="margin-top:1rem">
             <label class="label" for="forgotEmail">Email address</label>
             <input class="input" id="forgotEmail" type="email" autocomplete="email" placeholder="you@example.com" required>

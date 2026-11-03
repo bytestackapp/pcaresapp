@@ -533,11 +533,16 @@
     };
     setBusy(btn, true, 'Preparing');
     try {
-      const gs = groupsOf(state.view).sort((a, b) => a.date.localeCompare(b.date) || a.hospital.localeCompare(b.hospital));
-      const days = gs.map(g => ({
-        date: g.date, hospital: g.hospital, sheet: { ...manual },
-        entries: g.entries.map(e => ({ ...e })).sort((a, b) => String(a.created_at).localeCompare(b.created_at))
-      }));
+      const byH = new Map();
+      state.view.forEach(e => {
+        if (!byH.has(e.hospital_id)) byH.set(e.hospital_id, { hospital_id: e.hospital_id, hospital: e.hospital_name || '', entries: [] });
+        byH.get(e.hospital_id).entries.push(e);
+      });
+      const gs = [...byH.values()].sort((a, b) => a.hospital.localeCompare(b.hospital));
+      const days = gs.map(g => {
+        const entries = g.entries.map(e => ({ ...e })).sort((a, b) => String(a.entry_date).localeCompare(b.entry_date) || String(a.created_at).localeCompare(b.created_at));
+        return { date: entries[0].entry_date, dateTo: entries[entries.length - 1].entry_date, hospital: g.hospital, sheet: { ...manual }, entries };
+      });
       const signed = days.flatMap(d => d.entries).filter(e => e.has_signature);
       for (let i = 0; i < signed.length; i += 40) {
         await Promise.all(signed.slice(i, i + 40).map(async (e) => { try { e.signature = await API.entries.signature(e.id); } catch (x) {} }));

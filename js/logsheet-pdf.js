@@ -103,7 +103,8 @@
       d.txt('Name of P-CARES', 30, 30, 160, 59, { bold: true, size: 8.4, narrow: true });
       d.txt(String(sh.pcare_name || '').toUpperCase(), 160, 30, 538, 59, { size: 9, align: 'left', pad: 6, nowrap: true });
       d.txt('Date', 538, 30, 680, 59, { bold: true, size: 8.4, narrow: true });
-      d.txt(L.fmtDate(day.date, 'long').toUpperCase(), 680, 30, 840, 59, { size: 9, align: 'left', pad: 6, nowrap: true });
+      const dateText = day.dateTo && day.dateTo !== day.date ? L.fmtDate(day.date) + ' - ' + L.fmtDate(day.dateTo) : L.fmtDate(day.date, 'long');
+      d.txt(dateText.toUpperCase(), 680, 30, 840, 59, { size: 9, align: 'left', pad: 6, nowrap: true });
       // grid
       const top = 74, hb = 117, bot = 915, rh = (bot - hb) / N;
       d.box(30, top, 840, bot); d.hl(30, 840, hb, OUT);
@@ -263,7 +264,7 @@
       if (e.signature && !sigImgs[e.id]) { try { sigImgs[e.id] = await doc.embedPng(e.signature); } catch (x) {} }
     }
     for (const day of days) {
-      const pages = Math.max(1, Math.ceil(day.entries.length / N));
+      const pages = Math.floor(day.entries.length / N) + 1;
       if (sheets.s1) for (let p = 0; p < pages; p++) sheet1(day, p, pages);
       if (sheets.s2) for (let p = 0; p < pages; p++) sheet2(day, p, pages);
     }
