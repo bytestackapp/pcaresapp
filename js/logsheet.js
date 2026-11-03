@@ -147,7 +147,7 @@
     const start = (state.page - 1) * PAGE;
     const rows = state.view.slice(start, start + PAGE).map((e, i) => ({ e, no: state.view.length - (start + i) }));
     if (state.tab === 's1') {
-      wrap.innerHTML = `<table class="tbl ls-table"><thead><tr><th>No.</th><th>Date entered</th><th>Hospital</th><th>Name of client</th><th>Name of PhilHealth member</th><th>Name of patient</th><th>Contact</th><th>Signature</th><th>Patient is</th><th>Admission date</th><th>PCF1</th><th></th></tr></thead><tbody>${rows.map(({ e, no }) => `<tr>
+      wrap.innerHTML = `<table class="tbl ls-table"><thead><tr><th>No.</th><th>Date entered</th><th>Hospital</th><th>Name of client</th><th>Name of PhilHealth member</th><th>Name of patient</th><th>Contact</th><th>Signature</th><th>Patient is</th><th>Admission date</th><th>PCF1</th><th>Action</th></tr></thead><tbody>${rows.map(({ e, no }) => `<tr>
         ${noCell(no)}${dateCell(e)}${hospCell(e)}
         ${td('Client', esc(e.client_name), 'name', e.client_name)}
         ${td('PhilHealth member', esc(e.member_name), '', e.member_name)}
@@ -155,21 +155,21 @@
         ${td('Contact', esc(e.contact_no), 'nowrap', e.contact_no)}
         ${td('Signature', e.has_signature ? (sigCache.get(e.id) ? `<img class="sig-thumb" src="${sigCache.get(e.id)}" alt="Client signature">` : `<span data-sig="${e.id}" class="muted small">…</span>`) : '', '', e.has_signature ? 'y' : '')}
         ${td('Patient is', e.patient_is === 'member' ? '<span class="badge">Member</span>' : e.patient_is === 'dependent' ? '<span class="badge">Dependent</span>' : '', '', e.patient_is)}
-        ${td('Admission date', e.admission_date ? esc(L.fmtDate(e.admission_date)) : '', 'nowrap', e.admission_date)}
+        ${td('Admission date', e.admission_date ? esc(e.admission_date.slice(5, 7) + '/' + e.admission_date.slice(8, 10) + '/' + e.admission_date.slice(0, 4)) : '', 'nowrap', e.admission_date)}
         ${td('PCF1 reason', e.pcf1_reason ? `<span class="badge badge-amber">${esc((L.PCF1_REASONS.find(r => r.key === e.pcf1_reason) || {}).label || '')}</span>` : '', '', e.pcf1_reason)}
         ${actionsCell(e, no)}</tr>`).join('')}</tbody></table>`;
       loadSigs();
     } else {
-      wrap.innerHTML = `<table class="tbl ls-table"><thead><tr><th>No.</th><th>Date entered</th><th>Hospital</th><th>Name of client</th><th>Category</th><th>Status</th><th>Nature of inquiry</th><th>Service</th><th>Walk-in</th><th>PPFF</th><th>Remarks</th><th></th></tr></thead><tbody>${rows.map(({ e, no }) => `<tr>
+      wrap.innerHTML = `<table class="tbl ls-table"><thead><tr><th>No.</th><th>Date entered</th><th>Hospital</th><th>Name of client</th><th>Category</th><th>Status</th><th>Nature of inquiry</th><th>Service</th><th>Walk-in</th><th>PPFF</th><th>Remarks</th><th>Action</th></tr></thead><tbody>${rows.map(({ e, no }) => `<tr>
         ${noCell(no)}${dateCell(e)}${hospCell(e)}
         ${td('Client', esc(e.client_name), 'name', e.client_name)}
         ${td('Category', catBadge(e.member_category), '', e.member_category)}
         ${td('Status', e.status === 'active' ? '<span class="badge badge-green">Active</span>' : e.status === 'inactive' ? '<span class="badge badge-amber">Inactive</span>' : '', '', e.status)}
-        ${td('Nature of inquiry', esc(e.nature_of_inquiry), '', e.nature_of_inquiry)}
+        ${td('Nature of inquiry', esc(String(e.nature_of_inquiry || '').toUpperCase()), '', e.nature_of_inquiry)}
         ${td('Service', svcBadge(e.service), '', e.service)}
         ${td('Walk-in', e.walk_in ? tick : '', '', e.walk_in ? 'y' : '')}
         ${td('PPFF', e.ppff ? tick : '', '', e.ppff ? 'y' : '')}
-        ${td('Remarks', esc(e.remarks), '', e.remarks)}
+        ${td('Remarks', esc(String(e.remarks || '').toUpperCase()), '', e.remarks)}
         ${actionsCell(e, no)}</tr>`).join('')}</tbody></table>`;
     }
   }
@@ -583,7 +583,7 @@
       }
       const names = [...new Set(days.map(d => d.hospital))];
       const label = names.length === 1 ? names[0] : 'Multiple hospitals';
-      const bytes = await PDFExport.generate({ days, sheets: { s1, s2 }, hospital: label, logo: C.LOGO, appName: C.APP_NAME, rowsPerPage: C.ROWS_PER_PAGE });
+      const bytes = await PDFExport.generate({ days, sheets: { s1, s2 }, hospital: label, logo: C.LOGO_CARES, appName: C.APP_NAME, rowsPerPage: C.ROWS_PER_PAGE });
       const first = days[0].date, last = days[days.length - 1].date;
       const name = `Logsheet_${label.replace(/[^A-Za-z0-9]+/g, '_')}_${first === last ? first : first + '_to_' + last}.pdf`;
       const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
