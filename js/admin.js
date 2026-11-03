@@ -3,8 +3,8 @@
   const ctx = await Shell.init({ adminOnly: true });
   const me = ctx.profile, L = Logic, C = APP_CONFIG, { $, $$, esc, icon, setBusy } = UI;
   const root = $('#page');
-  const S = { tab: (location.hash || '#approvals').slice(1), profiles: [], hospitals: [], settings: ctx.settings, audit: [], today: {} };
-  const TABS = [['approvals', 'Approvals', 'userCheck'], ['users', 'Users', 'users'], ['hospitals', 'Hospitals', 'building'], ['settings', 'Settings', 'sliders']];
+  const S = { tab: (location.hash || '#approvals').slice(1), profiles: [], hospitals: [], settings: ctx.settings, audit: [], messages: [], today: {} };
+  const TABS = [['approvals', 'Approvals', 'userCheck'], ['users', 'Users', 'users'], ['hospitals', 'Hospitals', 'building'], ['messages', 'Messages', 'mail'], ['settings', 'Settings', 'sliders']];
   if (!TABS.some(t => t[0] === S.tab)) S.tab = 'approvals';
   const hname = (id) => (S.hospitals.find(h => h.id === id) || {}).name || '—';
   const pname = (id) => { const p = S.profiles.find(x => x.id === id); return p ? p.full_name : 'Unknown'; };
@@ -12,7 +12,7 @@
 
   async function loadAll() {
     try {
-      [S.profiles, S.hospitals] = await Promise.all([API.admin.profiles(), API.hospitals.list(true)]);
+      [S.profiles, S.hospitals, S.messages] = await Promise.all([API.admin.profiles(), API.hospitals.list(true), API.support.all().catch(() => [])]);
       const rows = await API.admin.entriesOn(L.todayStr()); S.today = {}; rows.forEach(r => { S.today[r.hospital_id] = (S.today[r.hospital_id] || 0) + 1; });
     } catch (e) { UI.toast(e.message, 'error', 5000); }
   }
@@ -23,8 +23,10 @@
     const pending = S.profiles.filter(p => p.status === 'pending').length;
     $$('.tab', root).forEach(b => { const on = b.dataset.tab === S.tab; b.classList.toggle('active', on); b.setAttribute('aria-selected', String(on)); });
     const c = $('[data-count="approvals"]', root); if (c) { c.hidden = !pending; c.textContent = pending; }
+    const openMsgs = S.messages.filter(m => m.status === 'open').length;
+    const c2 = $('[data-count="messages"]', root); if (c2) { c2.hidden = !openMsgs; c2.textContent = openMsgs; }
   }
-  function drawBody() { ({ approvals, users, hospitals, settings, audit })[S.tab]($('#tabBody')); }
+  function drawBody() { ({ approvals, users, hospitals, messages, settings, audit })[S.tab]($('#tabBody')); }
   function draw() {
     if (!$('.tabs', root)) {
       root.innerHTML = `<div class="tabs" role="tablist">${tabsHTML()}</div><div id="tabBody"></div>`;
@@ -166,6 +168,51 @@
           try { await API.hospitals.update(h.id, { name: v, short_name: sn }); S.hospitals = await API.hospitals.list(true); UI.toast('Hospital saved.', 'success'); } catch (err) { UI.toast(err.message, 'error'); return false; }
           draw();
         } }] });
+    }));
+  }
+
+  /* ---------- messages ---------- */
+  function messages(box) {
+    const list = S.messages;
+    box.innerHTML = list.length ? `<section class="card"><div class="table-wrap"><table class="tbl stack"><thead><tr><th>From</th><th>Subject</th><th>Sent</th><th>Status</th><th class="actions">Action</th></tr></thead><tbody>${list.map(m => `<tr>
+      <td data-label="From"><strong>${esc(pname(m.user_id))}</strong></td>
+      <td data-label="Subject">${esc(m.subject)}</td>
+      <td data-label="Sent" class="nowrap">${esc(UI.timeAgo(m.created_at))}</td>
+      <td data-label="Status">${m.status === 'open' ? '<span class="badge badge-amber">Open</span>' : '<span class="badge badge-green">Done</span>'}</td>
+      <td class="actions"><button class="btn btn-ghost btn-sm" data-view="${m.id}">View</button>${m.status === 'open' ? ` <button class="btn btn-primary btn-sm" data-reply="${m.id}">Reply</button>` : ''}</td></tr>`).join('')}</tbody></table></div></section>`
+      : `<section class="card"><div class="empty">${icon('mail')}<h4>No messages</h4><p>Messages from users will appear here, and you will get a notification.</p></div></section>`;
+
+    const msgBody = (m) => `<p class="muted small" style="margin-bottom:.2rem">From ${esc(pname(m.user_id))} · ${esc(UI.timeAgo(m.created_at))}</p>
+      <p><strong>${esc(m.subject)}</strong></p><p style="white-space:pre-wrap">${esc(m.message)}</p>`;
+
+    $$('[data-view]', box).forEach(b => b.addEventListener('click', () => {
+      const m = S.messages.find(x => x.id === b.dataset.view);
+      UI.modal({
+        title: 'Message from ' + pname(m.user_id), headIcon: 'mail', size: 'sm',
+        body: msgBody(m) + (m.admin_reply
+          ? `<div class="msg-reply"><strong>Your reply:</strong> <span style="white-space:pre-wrap">${esc(m.admin_reply)}</span></div>`
+          : '<p class="muted small">No reply yet.</p>'),
+        footer: [{ label: 'Close', className: 'btn-primary' }]
+      });
+    }));
+
+    $$('[data-reply]', box).forEach(b => b.addEventListener('click', () => {
+      const m = S.messages.find(x => x.id === b.dataset.reply);
+      UI.modal({
+        title: 'Reply to ' + pname(m.user_id), headIcon: 'mail', size: 'sm',
+        body: msgBody(m) + `<div class="field"><label class="label" for="msgReply">Your reply</label><textarea class="input" id="msgReply" rows="4" maxlength="1000"></textarea></div>
+          <p class="help">Once sent, the message is marked as done and the reply cannot be edited.</p>`,
+        footer: [{ label: 'Cancel', className: 'btn-ghost' }, { label: 'Send reply', className: 'btn-primary', onClick: async (h, btn) => {
+          const text = $('#msgReply', h.el).value.trim();
+          if (!text) { UI.flagInput($('#msgReply', h.el)); UI.toast('Type your reply first.', 'error'); return false; }
+          setBusy(btn, true, 'Sending');
+          try {
+            const row = await API.support.reply(m.id, text, 'resolved');
+            S.messages = S.messages.map(x => x.id === row.id ? row : x); UI.toast('Reply sent. Message marked as done.', 'success');
+          } catch (err) { UI.toast(err.message, 'error', 5000); setBusy(btn, false); return false; }
+          draw();
+        } }]
+      });
     }));
   }
 

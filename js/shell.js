@@ -62,6 +62,7 @@
     { key: 'dashboard', label: 'Dashboard', icon: 'layout', href: C.PATHS.dashboard },
     { key: 'logsheet',  label: 'Log Sheet', icon: 'clipboard', href: C.PATHS.logsheet },
     { key: 'profile',   label: 'Profile',   icon: 'user', href: C.PATHS.profile },
+    { key: 'help',      label: 'Help and support', icon: 'help', href: C.PATHS.help },
     { key: 'admin',     label: 'Admin',     icon: 'shield', href: C.PATHS.admin, admin: true }
   ];
   const navLinks = (page) => NAV.filter(n => !n.admin || ctx.isAdmin).map(n =>
@@ -74,7 +75,7 @@
     const app = document.createElement('div'); app.className = 'app';
     app.innerHTML = `
       <aside class="sidebar" id="sidebar" aria-label="Main navigation">
-        <a class="brand" href="${C.PATHS.dashboard}"><img src="${C.LOGO}" alt="" class="brand-logo"><span class="brand-name">${esc(C.APP_NAME)}</span></a>
+        <a class="brand" href="${C.PATHS.dashboard}"><img src="${C.LOGO_ONLY}" alt="" class="brand-logo"><span class="brand-name">${esc(C.APP_NAME)}</span></a>
         <nav class="sidebar-nav">${navLinks(page)}</nav>
         <div class="sidebar-foot">
           <div class="user-chip"><span class="avatar">${esc(UI.initials(p.full_name))}</span>

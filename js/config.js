@@ -9,6 +9,7 @@ window.APP_CONFIG = {
   APP_NAME: 'PCaresApp',
   APP_TAGLINE: 'Daily log and summary report',
   LOGO: '/image/logo.png',
+  LOGO_ONLY: '/image/logo-only.png',
   LOGO_CARES: '/image/phcares-logo.png',
 
   TIMEZONE: 'Asia/Manila',
@@ -24,6 +25,7 @@ window.APP_CONFIG = {
     dashboard: '/public/dashboard.html',
     logsheet:  '/public/logsheet.html',
     profile:   '/public/profile.html',
+    help:      '/public/help.html',
     admin:     '/public/admin.html'
   }
 };

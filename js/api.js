@@ -396,6 +396,14 @@
       async markRead(id) { await sb.from('notifications').update({ is_read: true }).eq('id', id); }
     },
 
+    /* ---------- support messages (user to admin) ---------- */
+    support: {
+      async mine(userId) { return ok(await sb.from('support_messages').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(20)); },
+      async send(userId, subject, message) { return ok(await sb.from('support_messages').insert({ user_id: userId, subject, message }).select().single()); },
+      async all() { return ok(await sb.from('support_messages').select('*').order('created_at', { ascending: false }).limit(200)); },
+      async reply(id, reply, status) { return ok(await sb.from('support_messages').update({ admin_reply: reply || null, status, replied_at: reply ? new Date().toISOString() : null }).eq('id', id).select().single()); }
+    },
+
     /* ---------- admin ---------- */
     admin: {
       async profiles() { return ok(await sb.from('profiles').select('*').order('created_at', { ascending: false })); },
