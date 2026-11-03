@@ -41,6 +41,8 @@
     };
     for (const e of entries) {
       const c = e.member_category;
+      if (e.walk_in) s.walkIn++;
+      if (e.ppff) s.ppff++;
       if (!(c in s.atPost)) continue;
       if (e.service === 'at_post') s.atPost[c]++;
       else if (e.service === 'ward_class') s.ward[c]++;
@@ -50,8 +52,6 @@
         else if (e.status === 'inactive') s.inactive[c]++;
       }
       if (e.pcf1_reason && s.pcf1[e.pcf1_reason] && c !== 'NM') s.pcf1[e.pcf1_reason][c]++;
-      if (e.walk_in) s.walkIn++;
-      if (e.ppff) s.ppff++;
     }
     s.inpatient = Object.fromEntries(CAT_CODES.map(c => [c, s.atPost[c] + s.ward[c]]));
     s.totals = {

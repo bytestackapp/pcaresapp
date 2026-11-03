@@ -4,7 +4,7 @@
   const me = ctx.profile, L = Logic, { $, $$, esc, icon, setBusy } = UI;
   const root = $('#page');
   const S = { tab: (location.hash || '#approvals').slice(1), profiles: [], hospitals: [], settings: ctx.settings, messages: [] };
-  const TABS = [['approvals', 'Approvals', 'userCheck'], ['users', 'Users', 'users'], ['hospitals', 'Hospitals', 'building'], ['messages', 'Messages', 'mail'], ['settings', 'Settings', 'sliders']];
+  const TABS = [['approvals', 'Approvals', 'userCheck'], ['users', 'Users', 'users'], ['hospitals', 'Hospitals', 'building'], ['messages', 'Messages', 'mail'], ['inquiries', 'Inquiries', 'list'], ['settings', 'Settings', 'sliders']];
   if (!TABS.some(t => t[0] === S.tab)) S.tab = 'approvals';
   const hname = (id) => (S.hospitals.find(h => h.id === id) || {}).name || '—';
   const pname = (id) => { const p = S.profiles.find(x => x.id === id); return p ? p.full_name : 'Unknown'; };
@@ -25,7 +25,7 @@
     const openMsgs = S.messages.filter(m => m.status === 'open').length;
     const c2 = $('[data-count="messages"]', root); if (c2) { c2.hidden = !openMsgs; c2.textContent = openMsgs; }
   }
-  function drawBody() { ({ approvals, users, hospitals, messages, settings })[S.tab]($('#tabBody')); }
+  function drawBody() { ({ approvals, users, hospitals, messages, inquiries, settings })[S.tab]($('#tabBody')); }
   function draw() {
     if (!$('.tabs', root)) {
       root.innerHTML = `<div class="tabs" role="tablist">${tabsHTML()}</div><div id="tabBody"></div>`;
@@ -210,6 +210,55 @@
           draw();
         } }]
       });
+    }));
+  }
+
+  /* ---------- inquiries ---------- */
+  function inqList() {
+    try {
+      const v = S.settings.inquiries, a = typeof v === 'string' ? JSON.parse(v) : v;
+      if (Array.isArray(a)) return a.filter(x => typeof x === 'string' && x.trim());
+    } catch (e) {}
+    return ['DOC REQUIREMENT', 'ADD DEPENDENT', 'PHIC ELIGIBILITY'];
+  }
+  async function saveInq(next, msg) {
+    try { await API.settings.set('inquiries', JSON.stringify(next)); S.settings = await API.settings.all(); UI.toast(msg, 'success'); }
+    catch (e) { UI.toast(e.message, 'error', 5000); }
+    draw();
+  }
+  function inquiries(box) {
+    const list = inqList();
+    box.innerHTML = `<div class="grid grid-main">
+      <section class="card"><div class="table-wrap"><table class="tbl stack"><thead><tr><th>Nature of inquiry</th><th></th></tr></thead><tbody>${list.map((n, i) => `<tr>
+        <td data-label="Nature of inquiry"><strong>${esc(n)}</strong></td>
+        <td class="actions"><button class="btn btn-ghost btn-sm" data-iedit="${i}">Edit</button> <button class="btn btn-ghost btn-sm" data-idel="${i}">Remove</button></td></tr>`).join('') || '<tr><td colspan="2" class="empty-cell"><div class="empty-mini"><p>No inquiries yet.</p></div></td></tr>'}</tbody></table></div></section>
+      <section class="card card-pad" style="align-self:start"><h3 style="margin-bottom:.2rem">Add inquiry</h3><p class="muted small">It appears in the Nature of inquiry list when adding an entry. It is saved exactly as you type it.</p>
+        <div class="field"><label class="label" for="inqNew">Nature of inquiry</label><input class="input" id="inqNew" maxlength="80"></div>
+        <button class="btn btn-primary" id="inqAdd">${icon('plus', 18)}<span>Add to list</span></button></section></div>`;
+    const dup = (v, skip) => list.some((x, i) => i !== skip && x.toLowerCase() === v.toLowerCase());
+    const add = () => {
+      const v = $('#inqNew').value.trim();
+      if (!v) { UI.flagInput($('#inqNew')); return UI.toast('Type the nature of inquiry.', 'error'); }
+      if (dup(v, -1)) { UI.flagInput($('#inqNew')); return UI.toast('That inquiry is already in the list.', 'error'); }
+      saveInq([...list, v], 'Inquiry added.');
+    };
+    $('#inqAdd').addEventListener('click', add);
+    $('#inqNew').addEventListener('keydown', (e) => { if (e.key === 'Enter') add(); });
+    $$('[data-iedit]', box).forEach(b => b.addEventListener('click', () => {
+      const i = +b.dataset.iedit;
+      UI.modal({ title: 'Edit inquiry', headIcon: 'edit', size: 'sm',
+        body: `<div class="field"><label class="label" for="inqEdit">Nature of inquiry</label><input class="input" id="inqEdit" maxlength="80" value="${esc(list[i])}"></div>`,
+        footer: [{ label: 'Cancel', className: 'btn-ghost' }, { label: 'Save', className: 'btn-primary', onClick: (h) => {
+          const v = $('#inqEdit', h.el).value.trim();
+          if (!v) { UI.flagInput($('#inqEdit', h.el)); return false; }
+          if (dup(v, i)) { UI.toast('That inquiry is already in the list.', 'error'); return false; }
+          const next = list.slice(); next[i] = v; saveInq(next, 'Inquiry saved.');
+        } }] });
+    }));
+    $$('[data-idel]', box).forEach(b => b.addEventListener('click', async () => {
+      const i = +b.dataset.idel;
+      if (await UI.confirm({ title: 'Remove this inquiry?', danger: true, confirmText: 'Remove', iconName: 'trash', message: `<p><strong>${esc(list[i])}</strong> will no longer appear in the list. Entries already saved are not changed.</p>` }))
+        saveInq(list.filter((x, j) => j !== i), 'Inquiry removed.');
     }));
   }
 

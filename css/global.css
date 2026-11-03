@@ -740,3 +740,8 @@ html.override .sidebar .brand { border-bottom-color: var(--border-strong); }
 .msg-item { padding: .75rem 0; border-top: 1px solid var(--border); }
 .msg-reply { margin-top: .4rem; padding: .55rem .75rem; border-radius: 10px; background: var(--primary-soft); color: var(--text); font-size: .88rem; }
 
+
+/* log sheet table: scrolls inside its own box, so the left-right scroll bar is always visible */
+#tableWrap { max-height: calc(100vh - 290px); min-height: 260px; overflow: auto; overscroll-behavior: contain; }
+#tableWrap .ls-table thead th { position: sticky; top: 0; z-index: 2; }
+@media (max-width: 760px) { #tableWrap { max-height: calc(100vh - 220px); } }

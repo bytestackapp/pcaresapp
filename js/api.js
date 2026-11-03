@@ -336,10 +336,10 @@
         try { await saveEntries(); } catch (e) { S.entries[i] = old; throw e; }
         return { ...rec };
       },
-      async markPrinted(ids, controlNo) {
+      async markPrinted(map) {
         await open();
-        const set = new Set(ids), now = new Date().toISOString(), old = [];
-        S.entries.forEach((e, i) => { if (set.has(e.id)) { old.push([i, e]); S.entries[i] = { ...e, control_no: controlNo, printed_at: now }; } });
+        const now = new Date().toISOString(), old = [];
+        S.entries.forEach((e, i) => { if (map.has(e.id)) { old.push([i, e]); S.entries[i] = { ...e, control_no: map.get(e.id), printed_at: now }; } });
         try { await saveEntries(); } catch (err) { old.forEach(([i, e]) => { S.entries[i] = e; }); throw err; }
       },
       async remove(id) {

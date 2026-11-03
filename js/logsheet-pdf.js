@@ -119,7 +119,7 @@
       const rows = day.entries.slice(pageIdx * N, pageIdx * N + N);
       for (let i = 0; i < N; i++) {
         const y0 = hb + i * rh, y1 = y0 + rh, e = rows[i];
-        d.txt(String(pageIdx * N + i + 1), 30, y0, 65, y1, { size: 7 });
+        d.txt(String(i + 1), 30, y0, 65, y1, { size: 7 });
         if (!e) { if (i === rows.length && pageIdx === pageCount - 1) d.nothing(10, 860, y0, y1); continue; }
         d.txt(e.client_name, 65, y0, 207, y1, { size: 8, align: 'left', pad: 4 });
         d.txt(e.member_name, 207, y0, 349, y1, { size: 8, align: 'left', pad: 4 });
@@ -135,8 +135,8 @@
         if (e.patient_is === 'dependent') d.check(712, y0, 745, y1);
         d.txt(fmtShort(e.admission_date), 745, y0, 840, y1, { size: 7.5, nowrap: true });
       }
-      if (pageIdx === pageCount - 1) {
-        const s = L.computeSummary(day.entries);
+      {
+        const s = pageIdx === pageCount - 1 ? L.computeSummary(day.entries) : L.computeSummary([]);
         // PCF1 issuance
         const px = [30, 160, 254, 349, 443, 538];
         d.box(30, 931, 538, 1256); d.hl(30, 538, 946); d.hl(30, 538, 971);
@@ -197,21 +197,31 @@
       const rows = day.entries.slice(pageIdx * N, pageIdx * N + N), catIdx = {}; L.CAT_CODES.forEach((c, i) => { catIdx[c] = 1 + i; });
       for (let i = 0; i < N; i++) {
         const y0 = hb + i * rh, y1 = y0 + rh, e = rows[i];
-        d.txt(String(pageIdx * N + i + 1), 91, y0, 126, y1, { size: 7 });
+        d.txt(String(i + 1), 91, y0, 126, y1, { size: 7 });
         if (!e) { if (i === rows.length && pageIdx === pageCount - 1) d.nothing(70, 889, y0, y1); continue; }
         const ci = catIdx[e.member_category]; if (ci) d.check(xs[ci], y0, xs[ci + 1], y1);
         if (e.status === 'active') d.check(440, y0, 474, y1); if (e.status === 'inactive') d.check(474, y0, 509, y1);
-        d.txt(String(e.nature_of_inquiry || '').toUpperCase(), 509, y0, 602, y1, { size: 7, align: 'left', pad: 3, maxLines: 4 });
+        d.txt(String(e.nature_of_inquiry || ''), 509, y0, 602, y1, { size: 7, align: 'left', pad: 3, maxLines: 4 });
         if (e.service === 'at_post') d.check(602, y0, 637, y1); if (e.service === 'ward_class') d.check(637, y0, 672, y1); if (e.service === 'outpatient') d.check(672, y0, 707, y1);
         if (e.walk_in) d.check(707, y0, 742, y1); if (e.ppff) d.check(742, y0, 777, y1);
         d.txt(String(e.remarks || '').toUpperCase(), 777, y0, 868, y1, { size: 7, align: 'left', pad: 3, maxLines: 4 });
       }
-      if (pageIdx !== pageCount - 1) return;
+      // Control number (printed on every page)
+      const ctl = (day.controls && day.controls[pageIdx]) || sh.control_no;
+      const [cy, cm, cs] = parts(ctl, day.date);
+      d.txt('Control No.', 640, 1212, 706, 1232, { bold: true, size: 7.8, align: 'left', pad: 0, nowrap: true, narrow: true });
+      d.txt(cy, 708, 1212, 732, 1230, { bold: true, size: 7.8, nowrap: true, narrow: true, pad: 0 }); d.txt('-', 728, 1212, 752, 1230, { bold: true, size: 7.8, narrow: true, pad: 0 });
+      d.txt(cm, 752, 1212, 768, 1230, { bold: true, size: 7.8, nowrap: true, narrow: true, pad: 0 }); d.txt('-', 770, 1212, 776, 1230, { bold: true, size: 7.8, narrow: true, pad: 0 });
+      d.txt(cs, 776, 1212, 824, 1230, { bold: true, size: 7.8, nowrap: true, narrow: true, pad: 0 });
+      d.hl(710, 868, 1232, 1.2);
+      d.txt('Year', 707, 1236, 745, 1248, { size: 5.4, nowrap: true, narrow: true }); d.txt('Month', 736, 1236, 788, 1248, { size: 5.4, nowrap: true, narrow: true }); d.txt('Series No.', 766, 1236, 834, 1248, { size: 5.4, nowrap: true, narrow: true });
 
-      const s = L.computeSummary(day.entries);
+      const last = pageIdx === pageCount - 1;
+      const V = (v) => last ? String(v) : '';
+      const s = L.computeSummary(last ? day.entries : []);
       const cx = [196, 230, 265, 300, 335, 370, 405, 440, 476, 510, 556], labels = L.CAT_CODES.concat(['Total']);
       const lab = (a, y0, b, y1, o) => d.txt(a, cx[0], y0, cx[1], y1, o);
-      const numRow = (obj, total, y0, y1) => { L.CAT_CODES.forEach((c, i) => d.txt(String(obj[c]), cx[i], y0, cx[i + 1], y1, { size: 7.2, narrow: true })); d.txt(String(total), cx[9], y0, cx[10], y1, { size: 7.2, bold: true, narrow: true }); };
+      const numRow = (obj, total, y0, y1) => { L.CAT_CODES.forEach((c, i) => d.txt(V(obj[c]), cx[i], y0, cx[i + 1], y1, { size: 7.2, narrow: true })); d.txt(V(total), cx[9], y0, cx[10], y1, { size: 7.2, bold: true, narrow: true }); };
       const head = (y0, y1) => labels.forEach((l, i) => d.txt(l, cx[i], y0, cx[i + 1], y1, { bold: true, size: (l === 'INF/SE' || l === 'MW-LB') ? 6 : 7.2, pad: .8, nowrap: true, narrow: true }));
       // Daily summary
       d.box(91, 943, 556, 1089); d.hl(91, 556, 962); d.hl(91, 556, 982); d.hl(126, 556, 1017); d.hl(91, 556, 1053);
@@ -233,8 +243,8 @@
       d.txt('Total', 476, 1158, 556, 1177, { bold: true, size: 7.2, narrow: true });
       [['Active', s.active, s.totals.active, 1177, 1195], ['Inactive', s.inactive, s.totals.inactive, 1195, 1213], ['Total', s.statusTotal, s.totals.status, 1213, 1250]].forEach(([n, obj, tot, y0, y1]) => {
         d.txt(n, 91, y0, 196, y1, { bold: true, size: 7.2, narrow: true });
-        L.MEMBER_CODES.forEach((c, i) => d.txt(String(obj[c]), cx[i], y0, cx[i + 1], y1, { size: 7.2, narrow: true }));
-        d.txt(String(tot), 476, y0, 556, y1, { size: 7.2, bold: true, narrow: true });
+        L.MEMBER_CODES.forEach((c, i) => d.txt(V(obj[c]), cx[i], y0, cx[i + 1], y1, { size: 7.2, narrow: true }));
+        d.txt(V(tot), 476, y0, 556, y1, { size: 7.2, bold: true, narrow: true });
       });
       // Right-hand totals
       d.box(603, 943, 868, 1160); d.vl(778, 943, 1160); [982, 1017, 1053, 1089, 1125].forEach(y => d.hl(603, 868, y));
@@ -248,16 +258,8 @@
       ];
       metrics.forEach(([l, v, y0, y1]) => {
         d.txt(l, 603, y0, 778, y1, { bold: true, size: 7.2, align: 'left', pad: 4, maxLines: 2, narrow: true });
-        if (v !== null && v !== undefined && v !== '') d.txt(String(v), 778, y0, 868, y1, { bold: true, size: 7.2, narrow: true });
+        if (last && v !== null && v !== undefined && v !== '') d.txt(String(v), 778, y0, 868, y1, { bold: true, size: 7.2, narrow: true });
       });
-      // Control number
-      const [cy, cm, cs] = parts(sh.control_no, day.date);
-      d.txt('Control No.', 640, 1212, 706, 1232, { bold: true, size: 7.8, align: 'left', pad: 0, nowrap: true, narrow: true });
-      d.txt(cy, 708, 1212, 732, 1230, { bold: true, size: 7.8, nowrap: true, narrow: true, pad: 0 }); d.txt('-', 728, 1212, 752, 1230, { bold: true, size: 7.8, narrow: true, pad: 0 });
-      d.txt(cm, 752, 1212, 768, 1230, { bold: true, size: 7.8, nowrap: true, narrow: true, pad: 0 }); d.txt('-', 770, 1212, 776, 1230, { bold: true, size: 7.8, narrow: true, pad: 0 });
-      d.txt(cs, 776, 1212, 824, 1230, { bold: true, size: 7.8, nowrap: true, narrow: true, pad: 0 });
-      d.hl(710, 868, 1232, 1.2);
-      d.txt('Year', 707, 1236, 745, 1248, { size: 5.4, nowrap: true, narrow: true }); d.txt('Month', 736, 1236, 788, 1248, { size: 5.4, nowrap: true, narrow: true }); d.txt('Series No.', 766, 1236, 834, 1248, { size: 5.4, nowrap: true, narrow: true });
     }
 
     for (const day of days) for (const e of day.entries) {
@@ -265,8 +267,10 @@
     }
     for (const day of days) {
       const pages = Math.floor(day.entries.length / N) + 1;
-      if (sheets.s1) for (let p = 0; p < pages; p++) sheet1(day, p, pages);
-      if (sheets.s2) for (let p = 0; p < pages; p++) sheet2(day, p, pages);
+      for (let p = 0; p < pages; p++) {
+        if (sheets.s1) sheet1(day, p, pages);
+        if (sheets.s2) sheet2(day, p, pages);
+      }
     }
     return await doc.save();
   }

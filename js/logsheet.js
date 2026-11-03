@@ -6,7 +6,13 @@
   const C = APP_CONFIG, L = Logic, { $, $$, esc, icon, setBusy } = UI;
   const today = () => L.todayStr();
   const PAGE = 50;
-  const INQUIRIES = ['DOC REQUIREMENT', 'ADD DEPENDENT', 'PHIC ELIGIBILITY'];
+  const INQUIRIES = (() => {
+    try {
+      const v = ctx.settings.inquiries, a = typeof v === 'string' ? JSON.parse(v) : v;
+      if (Array.isArray(a) && a.length) return a.filter(x => typeof x === 'string' && x.trim());
+    } catch (e) {}
+    return ['DOC REQUIREMENT', 'ADD DEPENDENT', 'PHIC ELIGIBILITY'];
+  })();
   const state = { all: [], view: [], page: 1, search: '', loading: true, error: '', filter: { hospital: '', from: '', to: '' } };
   const sigCache = new Map();
 
@@ -125,7 +131,7 @@
     }
     const start = (state.page - 1) * PAGE;
     const rows = state.view.slice(start, start + PAGE).map((e, i) => ({ e, no: state.view.length - (start + i) }));
-    wrap.innerHTML = `<table class="tbl ls-table"><thead><tr><th>No.</th><th>Date entered</th><th>Control no.</th><th>Hospital</th><th>Name of client</th><th>Name of PhilHealth member</th><th>Name of patient</th><th>Contact</th><th>Signature</th><th>Patient is</th><th>Admission date</th><th>Category</th><th>Status</th><th>Nature of inquiry</th><th>Service</th><th>Walk-in</th><th>PPFF</th><th>PCF1</th><th>Remarks</th><th>Action</th></tr></thead><tbody>${rows.map(({ e, no }) => `<tr>
+    wrap.innerHTML = `<table class="tbl ls-table"><thead><tr><th>No.</th><th>Date entered</th><th>Control no.</th><th>Hospital</th><th>Name of client</th><th>Name of member</th><th>Name of patient</th><th>Contact</th><th>Signature</th><th>Patient is</th><th>Admission date</th><th>Category</th><th>Status</th><th>Nature of inquiry</th><th>Service</th><th>Walk-in</th><th>PPFF</th><th>PCF1</th><th>Remarks</th><th>Action</th></tr></thead><tbody>${rows.map(({ e, no }) => `<tr>
       ${noCell(no)}${dateCell(e)}${ctrlCell(e)}${hospCell(e)}
       ${td('Client', esc(e.client_name), 'name', e.client_name)}
       ${td('PhilHealth member', esc(e.member_name), '', e.member_name)}
@@ -134,9 +140,9 @@
       ${td('Signature', e.has_signature ? (sigCache.get(e.id) ? `<img class="sig-thumb" src="${sigCache.get(e.id)}" alt="Client signature">` : `<span data-sig="${e.id}" class="muted small">…</span>`) : '', '', e.has_signature ? 'y' : '')}
       ${td('Patient is', e.patient_is === 'member' ? '<span class="badge">Member</span>' : e.patient_is === 'dependent' ? '<span class="badge">Dependent</span>' : '', '', e.patient_is)}
       ${td('Admission date', e.admission_date ? esc(e.admission_date.slice(5, 7) + '/' + e.admission_date.slice(8, 10) + '/' + e.admission_date.slice(0, 4)) : '', 'nowrap', e.admission_date)}
-      ${td('Category', catBadge(e.member_category), '', e.member_category)}
+      ${td('Category', e.member_category ? catBadge(e.member_category) : '', '', e.member_category)}
       ${td('Status', e.status === 'active' ? '<span class="badge badge-green">Active</span>' : e.status === 'inactive' ? '<span class="badge badge-amber">Inactive</span>' : '', '', e.status)}
-      ${td('Nature of inquiry', esc(String(e.nature_of_inquiry || '').toUpperCase()), '', e.nature_of_inquiry)}
+      ${td('Nature of inquiry', esc(e.nature_of_inquiry), '', e.nature_of_inquiry)}
       ${td('Service', svcBadge(e.service), '', e.service)}
       ${td('Walk-in', e.walk_in ? tick : '', '', e.walk_in ? 'y' : '')}
       ${td('PPFF', e.ppff ? tick : '', '', e.ppff ? 'y' : '')}
@@ -171,7 +177,8 @@
   /* ============================== entry form ============================== */
   function formHTML(e) {
     const chk = (cond) => cond ? 'checked' : '';
-    const inqList = (!e.nature_of_inquiry || INQUIRIES.includes(e.nature_of_inquiry)) ? INQUIRIES : [e.nature_of_inquiry, ...INQUIRIES];
+    const inqList = ((!e.nature_of_inquiry || INQUIRIES.includes(e.nature_of_inquiry)) ? INQUIRIES : [e.nature_of_inquiry, ...INQUIRIES])
+      .slice().sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
     const services = L.SERVICES.filter(sv => sv.key !== 'none');
     return `
       <div id="entryAlert" class="alert" hidden></div>
@@ -186,13 +193,13 @@
         </div>
         <div class="form-section"><h4>Client details</h4>
           <div class="form-grid">
-            <div class="field"><label class="label" for="fClient">Name of client <span class="req">*</span></label>
-              <input class="input caps" id="fClient" value="${esc(e.client_name || '')}" placeholder="LAST NAME, FIRST NAME" autocapitalize="characters" spellcheck="false" autofocus></div>
-            <div class="field"><label class="label" for="fMember">Name of PhilHealth member</label>
+            <div class="field"><label class="label" for="fPatient">Name of patient <span class="req">*</span></label>
+              <input class="input caps" id="fPatient" value="${esc(e.patient_name || '')}" placeholder="LAST NAME, FIRST NAME" autocapitalize="characters" spellcheck="false" autofocus></div>
+            <div class="field"><label class="label" for="fMember">Name of member</label>
               <input class="input caps" id="fMember" value="${esc(e.member_name || '')}" placeholder="LAST NAME, FIRST NAME" autocapitalize="characters" spellcheck="false"></div>
 
-            <div class="field"><label class="label" for="fPatient">Name of patient</label>
-              <input class="input caps" id="fPatient" value="${esc(e.patient_name || '')}" placeholder="LAST NAME, FIRST NAME" autocapitalize="characters" spellcheck="false"></div>
+            <div class="field"><label class="label" for="fClient">Name of client</label>
+              <input class="input caps" id="fClient" value="${esc(e.client_name || '')}" placeholder="LAST NAME, FIRST NAME" autocapitalize="characters" spellcheck="false"></div>
             <div class="field"><label class="label" for="fContact">Contact number <span class="muted small">(optional)</span></label>
               <input class="input" id="fContact" type="tel" inputmode="tel" value="${esc(e.contact_no || '')}" placeholder="09XX XXX XXXX"></div>
 
@@ -213,9 +220,9 @@
         </div>
         <div class="form-section"><h4>Classification</h4>
           <div class="form-grid">
-            <div class="field span-2"><div class="label-row"><label class="label" for="fCat">Member category <span class="req">*</span></label><button type="button" class="info-btn" id="legendBtn" aria-label="Show member category legend" title="Member category legend">${icon('info', 18)}</button></div>
+            <div class="field span-2"><div class="label-row"><label class="label" for="fCat">Member category</label><button type="button" class="info-btn" id="legendBtn" aria-label="Show member category legend" title="Member category legend">${icon('info', 18)}</button></div>
               <select class="input" id="fCat"><option value="">Select category</option>${L.CATEGORIES.map(c => `<option value="${esc(c.code)}" ${e.member_category === c.code ? 'selected' : ''}>${esc(c.code)} – ${esc(c.label)}</option>`).join('')}</select></div>
-            <div class="field"><label class="label" for="fSt">Membership status <span class="req" id="stReq">*</span></label>
+            <div class="field"><label class="label" for="fSt">Membership status <span id="stReq"></span></label>
               <select class="input" id="fSt"><option value="">Select status</option>
                 <option value="active" ${e.status === 'active' ? 'selected' : ''}>Active</option>
                 <option value="inactive" ${e.status === 'inactive' ? 'selected' : ''}>Inactive</option></select></div>
@@ -322,8 +329,13 @@
           const opts = Array.from(sel.options);
           const m = UI.modal({
             title, headIcon: 'list', size: 'sm', className: 'modal-picker',
-            body: `<ul class="pick-list" role="radiogroup">${opts.map((o, i) => `<li><label class="pick-item ${o.value === sel.value ? 'is-selected' : ''}"><input type="radio" name="opt" value="${i}" ${o.value === sel.value ? 'checked' : ''}><span class="radio-dot" aria-hidden="true"></span><span class="pick-name">${esc(o.textContent)}</span></label></li>`).join('')}</ul>`,
+            body: (sel.id === 'fInquiry' ? `<div class="search-box">${icon('search', 18)}<input type="search" class="input" id="pkSearch" placeholder="Type to search" autocomplete="off" aria-label="Search"></div>` : '') + `<ul class="pick-list" role="radiogroup">${opts.map((o, i) => `<li><label class="pick-item ${o.value === sel.value ? 'is-selected' : ''}"><input type="radio" name="opt" value="${i}" ${o.value === sel.value ? 'checked' : ''}><span class="radio-dot" aria-hidden="true"></span><span class="pick-name">${esc(o.textContent)}</span></label></li>`).join('')}</ul>`,
             footer: [{ label: 'Cancel', className: 'btn-ghost' }]
+          });
+          const pk = $('#pkSearch', m.el);
+          if (pk) pk.addEventListener('input', () => {
+            const t = pk.value.trim().toLowerCase();
+            $$('.pick-list li', m.el).forEach((li, i) => { li.hidden = !!t && !opts[i].textContent.toLowerCase().includes(t); });
           });
           $('.pick-list', m.el).addEventListener('change', (ev) => {
             const o = opts[+ev.target.value];
@@ -389,11 +401,8 @@
     if (!p.hospital_id) return ['fHosp', 'Select the hospital.'];
     if (!p.entry_date) return ['fDate', 'Enter the date of the entry.'];
     if (p.entry_date > today()) return ['fDate', 'The date cannot be in the future.'];
-    if (!p.client_name) return ['fClient', 'Enter the name of the client.'];
-    if (!p.member_category) return ['', 'Choose a member category.'];
+    if (!p.patient_name) return ['fPatient', 'Enter the name of the patient.'];
     if (p.member_category !== 'NM') {
-      if (!p.member_name) return ['fMember', 'Enter the name of the PhilHealth member, or choose Non-Member.'];
-      if (!p.status) return ['', 'Choose Active or Inactive for the membership status.'];
     }
     return null;
   }
@@ -428,7 +437,7 @@
       await load(true);
       if (another) {
         const f = $('#entryForm', h.el); f.reset();
-        $('#fClient', h.el).focus(); h.body.scrollTo({ top: 0 });
+        $('#fPatient', h.el).focus(); h.body.scrollTo({ top: 0 });
         wireForm(h, { entry_date: p.entry_date, hospital_id: p.hospital_id, hospital_name: p.hospital_name });
         $('#fDate', h.el).value = p.entry_date; $('#fDate', h.el)._sync();
         setBusy(btn, false);
@@ -443,7 +452,7 @@
     const e = state.all.find(x => x.id === id); if (!e) return;
     const ok = await UI.confirm({
       title: 'Delete this entry?', danger: true, confirmText: 'Delete entry', iconName: 'trash',
-      message: `<p><strong>${esc(e.client_name)}</strong> (${esc(L.fmtDate(e.entry_date, 'long'))}, ${esc(e.hospital_name || '')}) will be removed. This cannot be undone. Make sure you have a recent backup if you may need it again.</p>`
+      message: `<p><strong>${esc(e.patient_name || e.client_name || 'This entry')}</strong> (${esc(L.fmtDate(e.entry_date, 'long'))}, ${esc(e.hospital_name || '')}) will be removed. This cannot be undone. Make sure you have a recent backup if you may need it again.</p>`
     });
     if (!ok) return;
     try { await API.entries.remove(id); } catch (err) { UI.toast(err.message, 'error', 5000); return; }
@@ -473,28 +482,12 @@
   }
 
   /* ============================== export ============================== */
-  function nextSeries(ym, hospitalIds) {
-    const used = state.all
-      .filter(e => e.control_no && String(e.control_no).slice(0, 7) === ym && hospitalIds.includes(e.hospital_id))
-      .map(e => parseInt(String(e.control_no).split('-')[2], 10)).filter(n => !isNaN(n));
-    return String((used.length ? Math.max(...used) : 0) + 1).padStart(3, '0');
-  }
-
-  function openExportModal() {
+    function openExportModal() {
     if (!state.view.length) { UI.toast('There are no entries to export.', 'error'); return; }
-    const firstDate = state.view.map(e => e.entry_date).sort()[0] || today();
-    const nos = [...new Set(state.view.map(e => e.control_no || ''))];
-    let cy = firstDate.slice(0, 4), cm = firstDate.slice(5, 7), cs = '';
-    if (nos.length === 1 && nos[0]) { [cy, cm, cs] = nos[0].split('-'); }
-    else { cs = nextSeries(cy + '-' + cm, [...new Set(state.view.map(e => e.hospital_id))]); }
     UI.modal({
       title: 'Export PDF', headIcon: 'download', size: 'sm',
       body: `<div id="expAlert" class="alert" hidden></div>
-        <div class="field"><label class="label" for="expCY">Control no. <span class="req">*</span></label>
-          <div class="ctrl-row"><input class="input" id="expCY" value="${esc(cy)}" maxlength="4" inputmode="numeric" aria-label="Year">–
-            <input class="input" id="expCM" value="${esc(cm)}" maxlength="2" inputmode="numeric" aria-label="Month">–
-            <input class="input" id="expCS" value="${esc(cs)}" maxlength="4" inputmode="numeric" aria-label="Series no."></div>
-          <span class="help">Year · Month · Series no.</span></div>
+        <p class="help">Each page gets its own control no. (year-month-series), starting at 001 every month.</p>
         <div class="field"><label class="label" for="expOpdN">No. of times OPD class is conducted</label>
           <input class="input" id="expOpdN" type="number" min="0" inputmode="numeric"></div>
         <div class="field"><label class="label" for="expOpdC">No. of clients served during OPD class</label>
@@ -509,29 +502,24 @@
     const box = $('#expAlert', h.el); box.hidden = true;
     if (!window.PDFLib) { UI.showAlert(box, 'The PDF library did not load. Check your internet connection and try again.'); return false; }
     const num = (id) => { const v = $(id, h.el).value.trim(); return v === '' ? null : Math.max(0, parseInt(v, 10) || 0); };
-    const cy = $('#expCY', h.el).value.trim(), cm = $('#expCM', h.el).value.trim(), cs = $('#expCS', h.el).value.trim();
-    if (!/^\d{4}$/.test(cy) || !/^\d{1,2}$/.test(cm) || !/^\d{1,4}$/.test(cs)) { UI.showAlert(box, 'Enter the full control no.: year, month and series no.'); return false; }
-    const control = cy + '-' + cm.padStart(2, '0') + '-' + cs.padStart(3, '0');
 
-    const ids = new Set(state.view.map(e => e.id));
-    if (state.all.some(e => e.control_no === control && !ids.has(e.id))) {
-      UI.showAlert(box, 'Control no. ' + control + ' is already used for other entries. Use a different series no.'); return false;
-    }
     const printed = state.view.filter(e => e.control_no);
     if (printed.length) {
       const list = [...new Set(printed.map(e => e.control_no))].sort();
       const go = await UI.confirm({
         title: 'Some entries were already printed', danger: true, confirmText: 'Print again', iconName: 'alert',
-        message: `<p>${printed.length} of the ${state.view.length} selected entries were already printed under control no. <strong>${list.map(esc).join(', ')}</strong>.</p><p>If you print again and confirm the print-out, these entries will be marked with control no. <strong>${esc(control)}</strong>.</p>`
+        message: `<p>${printed.length} of the ${state.view.length} selected entries were already printed under control no. <strong>${list.map(esc).join(', ')}</strong>.</p><p>If you print again and confirm the print-out, these entries will get new control numbers.</p>`
       });
       if (!go) return false;
     }
 
     const manual = {
-      pcare_name: profile.full_name, control_no: control,
+      pcare_name: profile.full_name,
       opd_class_count: num('#expOpdN'), opd_class_clients: num('#expOpdC'), ppff_total: num('#expPpff')
     };
     setBusy(btn, true, 'Preparing');
+    const marks = new Map();      // entry id -> control no.
+    let controlList = [];
     try {
       const byH = new Map();
       state.view.forEach(e => {
@@ -539,10 +527,37 @@
         byH.get(e.hospital_id).entries.push(e);
       });
       const gs = [...byH.values()].sort((a, b) => a.hospital.localeCompare(b.hospital));
+
+      // highest series already used per hospital and month (by entries that are not part of this export)
+      const inView = new Set(state.view.map(e => e.id));
+      const used = new Map();
+      state.all.forEach(e => {
+        if (!e.control_no || inView.has(e.id)) return;
+        const p = String(e.control_no).split('-'), n = parseInt(p[2], 10);
+        if (isNaN(n)) return;
+        const k = e.hospital_id + '|' + p[0] + '-' + p[1];
+        if (n > (used.get(k) || 0)) used.set(k, n);
+      });
+      const PER = C.ROWS_PER_PAGE || 15;
+
       const days = gs.map(g => {
         const entries = g.entries.map(e => ({ ...e })).sort((a, b) => String(a.entry_date).localeCompare(b.entry_date) || String(a.created_at).localeCompare(b.created_at));
-        return { date: entries[0].entry_date, dateTo: entries[entries.length - 1].entry_date, hospital: g.hospital, sheet: { ...manual }, entries };
+        const pages = Math.floor(entries.length / PER) + 1;
+        const controls = [];
+        for (let p = 0; p < pages; p++) {
+          const chunk = entries.slice(p * PER, p * PER + PER);
+          if (!chunk.length) { controls.push(controls[controls.length - 1]); continue; }   // empty last page keeps the previous number
+          const ym = String(chunk[0].entry_date).slice(0, 7);
+          const k = g.hospital_id + '|' + ym, n = (used.get(k) || 0) + 1;
+          used.set(k, n);
+          const control = ym + '-' + String(n).padStart(3, '0');
+          controls.push(control);
+          chunk.forEach(e => marks.set(e.id, control));
+        }
+        return { date: entries[0].entry_date, dateTo: entries[entries.length - 1].entry_date, hospital: g.hospital, sheet: { ...manual, control_no: controls[0] }, controls, entries };
       });
+      controlList = [...new Set(days.flatMap(d => d.controls))].sort();
+
       const signed = days.flatMap(d => d.entries).filter(e => e.has_signature);
       for (let i = 0; i < signed.length; i += 40) {
         await Promise.all(signed.slice(i, i + 40).map(async (e) => { try { e.signature = await API.entries.signature(e.id); } catch (x) {} }));
@@ -563,15 +578,16 @@
     } catch (err) { UI.showAlert(box, err.message); setBusy(btn, false); return false; }
 
     h.close();
+    const range = controlList.length > 1 ? controlList[0] + ' to ' + controlList[controlList.length - 1] : controlList[0];
     const okPrint = await UI.confirm({
       title: 'Is the print-out okay?', confirmText: 'Yes, it is okay', cancelText: 'No, not yet', iconName: 'check',
-      message: `<p>If yes, control no. <strong>${esc(control)}</strong> will be saved on these ${ids.size} entries so you can tell which print-out they belong to.</p><p class="muted small">If no, nothing is saved. You can export again.</p>`
+      message: `<p>If yes, control no. <strong>${esc(range)}</strong> will be saved on these ${marks.size} entries so you can tell which print-out they belong to.</p><p class="muted small">If no, nothing is saved. You can export again.</p>`
     });
     if (okPrint) {
       try {
-        await API.entries.markPrinted([...ids], control);
+        await API.entries.markPrinted(marks);
         await load(true);
-        UI.toast('Control no. ' + control + ' saved on ' + ids.size + ' entries.', 'success', 5000);
+        UI.toast('Control numbers saved on ' + marks.size + ' entries.', 'success', 5000);
       } catch (err) { UI.toast(err.message, 'error', 6000); }
     }
   }
