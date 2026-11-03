@@ -81,10 +81,24 @@
     return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   }
 
+  // ---- active month (the "folder" shown in the Log Sheet) ----
+  const AM_KEY = 'ls_active_month';
+  const currentMonth = () => todayStr().slice(0, 7);
+  function activeMonth() {
+    try { const v = localStorage.getItem(AM_KEY); if (v && /^\d{4}-\d{2}$/.test(v)) return v; } catch (e) {}
+    return currentMonth();
+  }
+  function setActiveMonth(ym) {
+    try { if (!ym || ym === currentMonth()) localStorage.removeItem(AM_KEY); else localStorage.setItem(AM_KEY, ym); } catch (e) {}
+  }
+  const monthLabel = (ym) => new Date(+ym.slice(0, 4), +ym.slice(5, 7) - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const monthBounds = (ym) => [ym + '-01', toStr(new Date(+ym.slice(0, 4), +ym.slice(5, 7), 0))];
+
   window.Logic = {
     CATEGORIES, CAT_CODES, MEMBER_CODES, SERVICES, PCF1_REASONS,
     catByCode: (c) => CATEGORIES.find(x => x.code === c),
     serviceLabel: (k) => (SERVICES.find(x => x.key === k) || {}).label || '',
-    computeSummary, todayStr, parseDate, toStr, addDays, fmtDate
+    computeSummary, todayStr, parseDate, toStr, addDays, fmtDate,
+    currentMonth, activeMonth, setActiveMonth, monthLabel, monthBounds
   };
 })();

@@ -8,6 +8,7 @@
   const NAV = [
     { key: 'dashboard', label: 'Dashboard', icon: 'layout', href: C.PATHS.dashboard },
     { key: 'logsheet',  label: 'Log Sheet', icon: 'clipboard', href: C.PATHS.logsheet },
+    { key: 'monthly',   label: 'Monthly Log Sheet', icon: 'calendar', href: C.PATHS.monthly },
     { key: 'profile',   label: 'Profile',   icon: 'user', href: C.PATHS.profile },
     { key: 'help',      label: 'Help and support', icon: 'help', href: C.PATHS.help },
     { key: 'admin',     label: 'Admin',     icon: 'shield', href: C.PATHS.admin, admin: true }

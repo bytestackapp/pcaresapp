@@ -24,6 +24,7 @@ window.APP_CONFIG = {
     reset:     '/public/reset-password.html',
     dashboard: '/public/dashboard.html',
     logsheet:  '/public/logsheet.html',
+    monthly:   '/public/monthly.html',
     profile:   '/public/profile.html',
     help:      '/public/help.html',
     admin:     '/public/admin.html'

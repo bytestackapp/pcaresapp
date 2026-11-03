@@ -5,6 +5,8 @@
   const { profile, hospital } = ctx;
   const C = APP_CONFIG, L = Logic, { $, $$, esc, icon, setBusy } = UI;
   const today = () => L.todayStr();
+  const mb = () => L.monthBounds(L.activeMonth());                       // first and last day of the active month
+  const maxDate = () => { const last = mb()[1], t = today(); return last < t ? last : t; };
   const PAGE = 50;
   const INQUIRIES = (() => {
     try {
@@ -20,13 +22,14 @@
   const root = $('#page');
   root.innerHTML = `
     <div class="page-head">
-      <p class="lede">Every patient you have entered · saved on this laptop</p>
+      <p class="lede">${esc(L.monthLabel(L.activeMonth()))} · saved on this laptop</p>
       <div class="head-actions">
         <button class="btn btn-ghost" id="pdfBtn">${icon('download', 18)}<span>Export PDF</span></button>
         <button class="btn btn-primary" id="addBtn">${icon('plus', 18)}<span>Add entry</span></button>
       </div>
     </div>
 
+    ${L.activeMonth() !== L.currentMonth() ? `<div class="mode-note">${icon('calendar', 18)}<span>You are viewing ${esc(L.monthLabel(L.activeMonth()))}, not the current month.</span><a class="btn btn-ghost btn-sm" href="${C.PATHS.monthly}">Go to Monthly Log Sheet</a></div>` : ''}
     <div class="card ls-toolbar">
       <div class="tb-field">
         <label class="label" for="fHosp">Hospital</label>
@@ -45,7 +48,7 @@
   /* ============================== data ============================== */
   async function load(silent) {
     if (!silent) { state.loading = true; state.error = ''; renderAll(); }
-    try { state.all = (await API.entries.all()).reverse(); state.error = ''; }      // newest date first
+    try { state.all = (await API.entries.all()).filter(e => String(e.entry_date).slice(0, 7) === L.activeMonth()).reverse(); state.error = ''; }      // newest date first
     catch (e) { state.error = e.message; if (!silent) state.all = []; UI.toast(e.message, 'error', 6000); }
     state.loading = false; renderAll();
   }
@@ -93,7 +96,7 @@
     if (f.hospital && !hs.some(h => h.id === f.hospital)) f.hospital = '';
     $('#fHosp').innerHTML = '<option value="">All hospitals</option>' + hs.map(h => `<option value="${esc(h.id)}" ${h.id === f.hospital ? 'selected' : ''}>${esc(h.name)}</option>`).join('');
     $('#fFrom').value = f.from; $('#fTo').value = f.to;
-    $('#fFrom').max = f.to || ''; $('#fTo').min = f.from || '';
+    $('#fFrom').min = mb()[0]; $('#fFrom').max = f.to || mb()[1]; $('#fTo').min = f.from || mb()[0]; $('#fTo').max = mb()[1];
     if ($('#fFrom')._sync) { $('#fFrom')._sync(); $('#fTo')._sync(); }
     $('#dateHint').hidden = !!f.from === !!f.to;
   }
@@ -188,7 +191,7 @@
             <div class="field"><span class="label" id="fHospLabel">Hospital <span class="req">*</span></span>
               <button type="button" class="select-btn" id="fHosp" aria-labelledby="fHospLabel" aria-haspopup="dialog"><span class="sel-text">Select hospital</span><span id="fHospChev"></span></button></div>
             <div class="field"><label class="label" for="fDate">Date entered <span class="req">*</span></label>
-              <input class="input" id="fDate" type="date" value="${esc(e.entry_date || today())}" max="${today()}"></div>
+              <input class="input" id="fDate" type="date" value="${esc(e.entry_date || maxDate())}" min="${mb()[0]}" max="${maxDate()}"></div>
           </div>
         </div>
         <div class="form-section"><h4>Client details</h4>
@@ -401,6 +404,7 @@
     if (!p.hospital_id) return ['fHosp', 'Select the hospital.'];
     if (!p.entry_date) return ['fDate', 'Enter the date of the entry.'];
     if (p.entry_date > today()) return ['fDate', 'The date cannot be in the future.'];
+    if (p.entry_date.slice(0, 7) !== L.activeMonth()) return ['fDate', 'The date must be in ' + L.monthLabel(L.activeMonth()) + '. To enter another month, activate it in Monthly Log Sheet.'];
     if (!p.patient_name) return ['fPatient', 'Enter the name of the patient.'];
     if (p.member_category !== 'NM') {
     }

@@ -121,16 +121,25 @@
       };
       const footer = [{ label: 'Cancel', className: 'btn-ghost' }];
       if (again) {
-        footer.push({ label: 'Choose another folder', className: 'btn-ghost', onClick: (h) => pick(h) });
+        let needPick = false;
         footer.push({ label: 'Allow access', className: 'btn-primary', onClick: async (h) => {
-          try { if ((await prev.requestPermission({ mode: 'readwrite' })) === 'granted') { result = prev; return; } } catch (e) {}
-          UI.showAlert(UI.$('#fsAlert', h.el), 'Access was not allowed. Click Allow access again, or choose another folder.'); return false;
+          if (needPick) return pick(h);
+          try {
+            if ((await prev.requestPermission({ mode: 'readwrite' })) === 'granted') {
+              await prev.getDirectoryHandle('data', { create: true });   // fails if the folder was deleted
+              result = prev; return;
+            }
+          } catch (e) {}
+          needPick = true;
+          UI.showAlert(UI.$('#fsAlert', h.el), 'The data folder could not be opened. Click Allow access again, then choose C:\\Temp (use New folder if it does not exist).'); return false;
         } });
       } else footer.push({ label: 'Choose folder', className: 'btn-primary', onClick: (h) => pick(h) });
       UI.modal({
         title: again ? 'Allow access to your data folder' : 'Choose where to save your data', headIcon: 'file', size: 'sm', persistent: true, footer,
         body: `<div id="fsAlert" class="alert" hidden></div>` + (again
-          ? `<p>PCaresApp needs your permission to use the folder <strong>${UI.esc(prev.name)}</strong> again. Click <strong>Allow access</strong>, then allow it in the browser message (choose “Allow on every visit” to avoid this next time).</p>`
+          ? `<p>PCaresApp needs your permission to use the folder <strong>${UI.esc(prev.name)}</strong> again.</p>
+             <ol style="padding-left:1.2rem;margin:0 0 .75rem"><li>Click <strong>Allow access</strong>.</li><li>A small box from your browser appears at the top. Click <strong>Allow</strong>. If it shows <strong>Allow on every visit</strong>, click that one instead.</li></ol>
+             <p class="help">Choosing “Allow on every visit” stops this window from appearing each time you open the app.</p>`
           : `<p>PCaresApp saves your patient entries as files on this laptop, not on the internet.</p>
              <ol style="padding-left:1.2rem;margin:0 0 .75rem"><li>Click <strong>Choose folder</strong>.</li><li>Open <strong>C:\\Temp</strong> (use <em>New folder</em> if it does not exist) and click <strong>Select Folder</strong>.</li><li>Click <strong>Edit files</strong> to allow it.</li></ol>
              <p class="help">PCaresApp creates the <strong>PCares</strong> folder inside it, with <strong>data</strong> and <strong>backup</strong> folders in that, by itself.</p>`),
