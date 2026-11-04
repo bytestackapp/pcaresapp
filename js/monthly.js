@@ -37,12 +37,15 @@
       const s = L.computeSummary(list);
       const pcf1 = list.filter(e => e.pcf1_reason && e.member_category !== 'NM').length;
       const isAct = ym === act;
+      const status = [];
+      if (ym === cur) status.push('<span>Current month</span>');
+      if (isAct) status.push('<span class="is-showing">Showing in Log Sheet</span>');
       cards.push(`<section class="card month-card${isAct ? ' is-active' : ''}${list.length ? '' : ' is-empty'}">
-        <div class="month-head"><h3>${MONTHS[m - 1]}</h3><span class="row">${ym === cur ? '<span class="badge badge-blue">Current month</span>' : ''}${isAct ? '<span class="badge badge-green">Showing in Log Sheet</span>' : ''}</span></div>
-        <div class="month-stats">${[['Total entries', s.total], ['Inpatient', s.totals.inpatient], ['Outpatient', s.totals.outpatient], ['Walk-in', s.walkIn], ['PPFF', s.ppff], ['PCF1 issued', pcf1]].map(([l, v]) => `<div><b>${v}</b><span>${l}</span></div>`).join('')}</div>
+        <div class="month-head"><h3>${MONTHS[m - 1]}</h3><span class="month-status">${status.join(' · ')}</span></div>
+        <div class="month-stats">${[['Total entries', s.total], ['Inpatient', s.totals.inpatient], ['Outpatient', s.totals.outpatient], ['Walk-in', s.walkIn], ['PPFF', s.ppff], ['PCF1 issued', pcf1]].map(([l, v]) => `<div><b class="${v ? '' : 'z'}">${v}</b><span>${l}</span></div>`).join('')}</div>
         ${isAct
-          ? `<a class="btn btn-primary btn-block" href="${C.PATHS.logsheet}">${icon('clipboard', 18)}<span>Open Log Sheet</span></a>`
-          : `<button class="btn btn-ghost btn-block" data-activate="${ym}">${icon('check', 18)}<span>Activate</span></button>`}
+          ? `<a class="btn btn-primary btn-sm btn-block" href="${C.PATHS.logsheet}">Open Log Sheet</a>`
+          : `<button class="btn btn-ghost btn-sm btn-block" data-activate="${ym}">Activate</button>`}
       </section>`);
     }
     root.innerHTML = `
