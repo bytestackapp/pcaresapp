@@ -734,8 +734,15 @@ input[type="password"]::-webkit-credentials-auto-fill-button { visibility: hidde
 .rpt-table td.in { padding: 0; min-width: 5.5rem; background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 4%, var(--surface)), color-mix(in srgb, var(--primary) 16%, var(--surface))); }
 .rpt-table td.in input { width: 100%; min-width: 0; border: 0; background: transparent; color: var(--text); font: inherit; text-align: center; padding: .28rem .3rem; -moz-appearance: textfield; }
 .rpt-table td.in input::-webkit-outer-spin-button, .rpt-table td.in input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.rpt-table td.in input:disabled { color: var(--text); -webkit-text-fill-color: var(--text); opacity: 1; cursor: default; }
 .rpt-table td.in input:focus { outline: 2px solid var(--primary); outline-offset: -2px; background: var(--primary-soft); }
 .rpt-table tfoot td, .rpt-total td { font-weight: 700; background: var(--surface-3); }
 .rpt-none { padding: 1rem !important; color: var(--text-3); }
 .rpt-table td.z { color: color-mix(in srgb, var(--text) 50%, transparent); font-weight: 400; }
 .rpt-table td.in input::placeholder { color: color-mix(in srgb, var(--text) 50%, transparent); opacity: 1; }
+.rpt-table th.inq-h { min-width: 0; width: 2.6rem; padding: .3rem .2rem; vertical-align: bottom; }
+.inq-v { writing-mode: vertical-rl; transform: rotate(180deg); height: 8rem; margin: 0 auto; white-space: normal; text-align: center; line-height: 1.15; }
+
+.rpt-fill { width: 100%; }
+.rpt-fill .rpt-table { width: 100%; }
+.rpt-fill .rpt-table th.inq-h { width: auto; }

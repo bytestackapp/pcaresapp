@@ -74,7 +74,7 @@
 
   /* ---------- modal ---------- */
   let openCount = 0;
-  function modal({ title, body = '', footer = [], size = '', persistent = false, className = '', headIcon = '', onClose } = {}) {
+  function modal({ title, body = '', footer = [], size = '', persistent = false, className = '', headIcon = '', onClose, beforeClose } = {}) {
     const bd = document.createElement('div');
     bd.className = 'modal-backdrop';
     bd.innerHTML = `
@@ -88,7 +88,9 @@
     const handle = { el: bd, box, body: bodyEl, closed: false };
     const prevFocus = document.activeElement;
     function close(result) {
-      if (handle.closed) return; handle.closed = true;
+      if (handle.closed) return;
+      if (beforeClose && beforeClose(handle) === false) return;
+      handle.closed = true;
       document.removeEventListener('keydown', onKey, true);
       bd.classList.remove('in');
       setTimeout(() => { bd.remove(); }, 160);

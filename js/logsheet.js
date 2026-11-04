@@ -491,7 +491,7 @@
     UI.modal({
       title: 'Export PDF', headIcon: 'download', size: 'sm',
       body: `<div id="expAlert" class="alert" hidden></div>
-        <p class="help">Each page gets its own control no. (year-month-series), starting at 001 every month.</p>
+        <p class="help">Each page gets its own control no. (year-month-series), starting at 01 every month.</p>
         <div class="field"><label class="label" for="expOpdN">No. of times OPD class is conducted</label>
           <input class="input" id="expOpdN" type="number" min="0" inputmode="numeric"></div>
         <div class="field"><label class="label" for="expOpdC">No. of clients served during OPD class</label>
@@ -554,7 +554,7 @@
           const ym = String(chunk[0].entry_date).slice(0, 7);
           const k = g.hospital_id + '|' + ym, n = (used.get(k) || 0) + 1;
           used.set(k, n);
-          const control = ym + '-' + String(n).padStart(3, '0');
+          const control = ym + '-' + String(n).padStart(2, '0');
           controls.push(control);
           chunk.forEach(e => marks.set(e.id, control));
         }
