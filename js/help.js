@@ -14,7 +14,7 @@
     ['I see a message that the app lost access to the data folder.', 'Refresh the page (Ctrl+F5), then click Allow access when asked. Use Google Chrome or Microsoft Edge on a laptop or desktop.'],
     ['How do I export the PDF?', 'Open Log Sheet, set the Hospital and the From and To dates, then click Export PDF. Type the OPD and PPFF numbers if needed, then click Download PDF.'],
     ['What is the control number?', 'Each printed page gets a control number (year-month-series), added automatically. After the PDF downloads, confirm the print-out is okay so the number is saved on those entries. If you print entries that already have a number, you will see a warning first.'],
-    ['How do I get the monthly reports?', 'Go to Monthly Log Sheet and click Report on the month you need. Choose Summary (Inpatient) or Nature of Inquiry, then click Export PDF.'],
+    ['How do I get the monthly reports?', 'Go to Monthly Log Sheet and click Report on the month you need. Choose Summary (Inpatient) or Nature of Inquiry, then click Export PDF or Export Excel.'],
     ['How do I fill in NO CO-PAY and the OPD class numbers?', 'These are the only numbers you type in the Summary (Inpatient) report. Click Edit, type the numbers, then click Save. They are saved on this laptop and included in your backups.'],
     ['Why are some entries missing from the Nature of Inquiry report?', 'Entries whose inquiry was renamed or removed by the admin are not counted. The report shows a message when this happens. Ask the admin to put the inquiry back in the list.'],
     ['Why is Membership status greyed out?', 'Non-Member clients do not have a membership status, so the field is turned off when Non-Member is selected.'],

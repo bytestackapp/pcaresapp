@@ -194,6 +194,17 @@
           setEditing(false); b.textContent = 'Edit'; b.className = 'btn btn-ghost';
           UI.toast('Changes saved.', 'success'); return false;
         } },
+        { id: 'rptXls', label: 'Export Excel', className: 'btn-ghost', close: false, onClick: async (h, b) => {
+          if (editing) { UI.toast('Press Save first, then export.', 'info'); return false; }
+          if (!window.ExcelJS) { UI.toast('The Excel library did not load. Check your internet connection and try again.', 'error', 5000); return false; }
+          UI.setBusy(b, true);
+          try {
+            const tt = totals(rows, man);
+            await ReportsXlsx.summary({ days: rows.map(r => ({ day: r.day, hci: r.hci, v: r.d ? cells(r, man) : null })), hcis: tt.hcis, grand: tt.grand, cats: CATS, info, ym, logo: C.LOGO_CARES });
+            UI.toast('Excel file downloaded.', 'success');
+          } catch (e) { UI.toast(e.message || 'Could not create the Excel file.', 'error', 5000); }
+          UI.setBusy(b, false); return false;
+        } },
         { id: 'rptPdf', label: 'Export PDF', className: 'btn-primary', close: false, onClick: async (h, b) => {
           if (editing) { UI.toast('Press Save first, then export.', 'info'); return false; }
           if (!window.PDFLib) { UI.toast('The PDF library did not load. Check your internet connection and try again.', 'error', 5000); return false; }
@@ -407,6 +418,13 @@ if (skipped) UI.toast(skipped + ' entr' + (skipped === 1 ? 'y uses' : 'ies use')
       title: 'Nature of Inquiry', headIcon: 'file', size: 'xl', className: 'modal-report', body,
       footer: [
         { label: 'Close', className: 'btn-ghost' },
+        { id: 'rptXls', label: 'Export Excel', className: 'btn-ghost', close: false, onClick: async (h, b) => {
+          if (!window.ExcelJS) { UI.toast('The Excel library did not load. Check your internet connection and try again.', 'error', 5000); return false; }
+          UI.setBusy(b, true);
+          try { await ReportsXlsx.inquiry({ days: rows, hcis: t.hcis, grand: t.grand, cols, info, ym, logo: C.LOGO_CARES }); UI.toast('Excel file downloaded.', 'success'); }
+          catch (e) { UI.toast(e.message || 'Could not create the Excel file.', 'error', 5000); }
+          UI.setBusy(b, false); return false;
+        } },
         { id: 'rptPdf', label: 'Export PDF', className: 'btn-primary', close: false, onClick: async (h, b) => {
           if (!window.PDFLib) { UI.toast('The PDF library did not load. Check your internet connection and try again.', 'error', 5000); return false; }
           UI.setBusy(b, true);
