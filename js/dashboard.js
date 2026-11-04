@@ -30,7 +30,7 @@
   $('#notes').innerHTML = notes.join('');
 
   let rows = [];
-  try { rows = await API.entries.range(hospital.id, L.addDays(today, -6), today); }
+  try { rows = await API.entries.range(profile.hospital_id, L.addDays(today, -6), today); }
   catch (e) { UI.toast(e.message, 'error', 5000); }
 
   const todays = rows.filter(r => r.entry_date === today), s = L.computeSummary(todays);

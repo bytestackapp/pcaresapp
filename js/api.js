@@ -237,10 +237,18 @@
 
     async signIn(username, password) {
       const uname = String(username || '').trim().toLowerCase();
-      const { data: email, error: e1 } = await sb.rpc('login_email', { p_username: uname });
-      fail(e1);
-      if (!email) throw new Error('Incorrect username or password.');
-      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+      let res;
+      try {
+        res = await fetch(C.SUPABASE_URL + '/functions/v1/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': C.SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + C.SUPABASE_ANON_KEY },
+          body: JSON.stringify({ username: uname, password })
+        });
+      } catch (e) { throw new Error(friendly(e)); }
+      let out = {};
+      try { out = await res.json(); } catch (e) {}
+      if (!res.ok || !out.session) throw new Error(out.error || 'Could not sign in. Please try again.');
+      const { data, error } = await sb.auth.setSession({ access_token: out.session.access_token, refresh_token: out.session.refresh_token });
       fail(error);
       return data.user;
     },
@@ -361,6 +369,24 @@
       }
     },
 
+    /* ---------- typed report numbers (saved in the data folder, included in backups) ---------- */
+    reportManual: {
+      async get(ym) {
+        await open();
+        const r = S.sheets.find(x => x.kind === 'report_manual' && x.ym === ym);
+        return r && r.data ? JSON.parse(JSON.stringify(r.data)) : {};
+      },
+      async set(ym, data) {
+        await open();
+        const i = S.sheets.findIndex(x => x.kind === 'report_manual' && x.ym === ym);
+        const old = i >= 0 ? S.sheets[i] : null;
+        const rec = { kind: 'report_manual', ym, data, updated_at: new Date().toISOString() };
+        if (i >= 0) S.sheets[i] = rec; else S.sheets.push(rec);
+        try { await saveSheets(); }
+        catch (e) { if (i >= 0) S.sheets[i] = old; else S.sheets = S.sheets.filter(x => x !== rec); throw e; }
+      }
+    },
+
     /* ---------- the data folder, backups and restore ---------- */
     files: {
       async backupNow() { await ensure(); return makeBackup('backup'); },
@@ -380,6 +406,10 @@
 
     /* ---------- support messages (user to admin) ---------- */
     support: {
+      async sendFromLogin(username, subject, message) {
+        const { error } = await sb.rpc('login_support', { p_username: String(username || '').trim().toLowerCase(), p_subject: subject, p_message: message });
+        fail(error);
+      },
       async mine(userId) { return ok(await sb.from('support_messages').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(20)); },
       async send(userId, subject, message) { return ok(await sb.from('support_messages').insert({ user_id: userId, subject, message }).select().single()); },
       async all() { return ok(await sb.from('support_messages').select('*').order('created_at', { ascending: false }).limit(200)); },

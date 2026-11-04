@@ -5,7 +5,7 @@
   const root = $('#page');
 
   const roleBadge = profile.role === 'admin' ? '<span class="badge badge-blue">Administrator</span>' : '<span class="badge badge-green">Staff</span>';
-  const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  const currentTheme = () => document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
 
   function draw() {
     root.innerHTML = `
@@ -40,7 +40,7 @@
           <section class="card card-pad">
             <h3 style="margin-bottom:.2rem">Appearance</h3><p class="muted small">Dark mode is easier on the eyes during night shifts.</p>
             <div class="seg" id="themeSeg" role="group" aria-label="Theme">
-              ${['light', 'dark'].map(t => `<button data-t="${t}" class="${t === theme ? 'active' : ''}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('')}
+              ${['light', 'dark'].map(t => `<button data-t="${t}" class="${t === currentTheme() ? 'active' : ''}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('')}
             </div>
           </section>
         </div>
@@ -124,7 +124,7 @@
           const name = ($('input[name="bk"]:checked', h.el) || {}).value; if (!name) return false;
           setBusy(b, true, 'Restoring');
           try { const r = await API.files.restore(name); UI.toast('Restored ' + r.entries + ' entries.', 'success', 6000); }
-          catch (err) { showAlert($('#rsAlert', h.el), err.message); setBusy(b, false); return false; }
+          catch (err) { UI.toast(err.message, 'error', 6000); setBusy(b, false); return false; }
         }
       }]
     });

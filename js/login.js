@@ -15,11 +15,11 @@
   const reasons = {
     pending: ['Your account is still waiting for administrator approval. We will notify you once it is approved.', 'info'],
     rejected: ['Your account request was declined. Please contact your administrator.', 'error'],
-    suspended: ['Your account is suspended. Please contact your administrator.', 'error'],
+    suspended: ['Your account is locked or suspended. Click Support below to message the admin.', 'error'],
     noprofile: ['We could not find a profile for this account. Please contact your administrator.', 'error'],
     reset: ['Password updated. Sign in with your new password.', 'success']
   };
-  if (reason && reasons[reason]) showAlert(alertBox, ...reasons[reason]);
+  if (reason && Object.prototype.hasOwnProperty.call(reasons, reason)) showAlert(alertBox, ...reasons[reason]);
 
   // Remember the last hospital on this device
   try {
@@ -49,7 +49,7 @@
       if (!p) return bail('We could not find a profile for this account. Please contact your administrator.');
       if (p.status === 'pending') return bail('Your account is still waiting for administrator approval. We will notify you once it is approved.', 'info');
       if (p.status === 'rejected') return bail('Your account request was declined. Please contact your administrator.');
-      if (p.status === 'suspended') return bail('Your account is suspended. Please contact your administrator.');
+      if (p.status === 'suspended') return bail('Your account is locked or suspended. Click Support below to message the admin.');
       await API.setMyHospital(h.id);
       try { localStorage.setItem('ls_last_hospital', h.id); } catch (e) {}
       location.replace(C.PATHS.dashboard);
@@ -74,9 +74,33 @@
     finally { setBusy(btn, false); }
   });
 
+  /* support: message the admin without signing in */
+  $('#supportLink').addEventListener('click', () => UI.modal({
+    title: 'Support', headIcon: 'mail', size: 'sm',
+    body: `<p class="muted small">Locked out or cannot sign in? Send a message to the admin. Do not include patient details.</p>
+      <div class="field"><label class="label" for="spUser">Your username</label><input class="input" id="spUser" autocapitalize="none" spellcheck="false" value="${UI.esc($('#username').value.trim())}"></div>
+      <div class="field"><label class="label" for="spSub">Subject</label><input class="input" id="spSub" maxlength="100" placeholder="e.g. My account is locked"></div>
+      <div class="field"><label class="label" for="spBody">Message</label><textarea class="input" id="spBody" rows="4" maxlength="900"></textarea></div>`,
+    footer: [{ label: 'Cancel', className: 'btn-ghost' }, { label: 'Send message', className: 'btn-primary', onClick: async (h, b) => {
+      const u = $('#spUser', h.el).value.trim(), s = $('#spSub', h.el).value.trim(), m = $('#spBody', h.el).value.trim();
+      if (!u) { UI.flagInput($('#spUser', h.el)); UI.toast('Enter your username.', 'error'); return false; }
+      if (!s) { UI.flagInput($('#spSub', h.el)); UI.toast('Enter a subject.', 'error'); return false; }
+      if (!m) { UI.flagInput($('#spBody', h.el)); UI.toast('Enter your message.', 'error'); return false; }
+      setBusy(b, true, 'Sending');
+      try { await API.support.sendFromLogin(u, s, m); UI.toast('Message sent. The admin will see it.', 'success', 5000); }
+      catch (err) { UI.toast(err.message, 'error', 5000); setBusy(b, false); return false; }
+    } }]
+  }));
+
   /* info modals */
   $('#aboutLink').addEventListener('click', () => UI.modal({ title: 'About', headIcon: 'info', size: 'sm', footer: [{ label: 'Close', className: 'btn-primary' }],
-    body: `<p><strong>${UI.esc(C.APP_NAME)}</strong> replaces the paper P-CARES log and the daily report with one digital sheet. Entries are saved per day, the summary is calculated for you, and the sheet exports to PDF in the familiar format.</p>` }));
+    body: `<p><strong>${UI.esc(C.APP_NAME)}</strong> replaces the paper P-CARES log and the daily report with one digital log sheet.</p>
+      <p>Enter each client once. The app calculates the daily summary, keeps a monthly log sheet, prepares the monthly reports (Summary Inpatient and Nature of Inquiry), and exports everything to PDF in the familiar format, with a control number on each page.</p>
+      <p class="muted small">Works in Google Chrome or Microsoft Edge on a laptop or desktop computer. Version ${UI.esc(C.APP_VERSION || '1.0.0')}.</p>` }));
   $('#privacyLink').addEventListener('click', () => UI.modal({ title: 'Privacy', headIcon: 'lock', size: 'sm', footer: [{ label: 'Close', className: 'btn-primary' }],
-    body: `<p>Patient and member details entered here are personal information. They are saved only on this device, never on the server. Download a backup from your Profile page regularly.</p><p>Use this app in line with the Data Privacy Act of 2012 (RA 10173) and your hospital’s data policy. Do not share your login.</p>` }));
+    body: `<p>Patient and member details entered here are personal information. They are saved only on this laptop, in the <strong>C:\\Temp\\PCares</strong> folder, never on the internet. This includes signatures, the typed report numbers and the backups.</p>
+      <p>The online server keeps only account details: name, username, email, position, contact number, hospital, and the messages you send to the admin. Do not put patient details in a message.</p>
+      <p>Backups contain patient details. Keep the folder safe, and copy the backup folder to another drive from time to time.</p>
+      <p>For your protection, an account is locked after 3 wrong password attempts. The admin can unlock it once you send a message through Support.</p>
+      <p>Use this app in line with the Data Privacy Act of 2012 (RA 10173) and your hospital’s data policy. Do not share your login.</p>` }));
 })();

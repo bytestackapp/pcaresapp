@@ -8,8 +8,15 @@
   const MANUAL = ['copay', 'opdN', 'opdC'];
   const MKEY = (ym) => 'pc_report_manual_' + ym;
 
-  function loadManual(ym) { try { return JSON.parse(localStorage.getItem(MKEY(ym)) || '{}') || {}; } catch (e) { return {}; } }
-  function saveManual(ym, obj) { try { localStorage.setItem(MKEY(ym), JSON.stringify(obj)); } catch (e) {} }
+  async function loadManual(ym) {
+    const d = await API.reportManual.get(ym);
+    if (d && Object.keys(d).length) return d;
+    try { return JSON.parse(localStorage.getItem(MKEY(ym)) || '{}') || {}; } catch (e) { return {}; }   // numbers typed before this update
+  }
+  async function saveManual(ym, obj) {
+    await API.reportManual.set(ym, obj);
+    try { localStorage.removeItem(MKEY(ym)); } catch (e) {}
+  }
 
   /* ---------- build the report data from the entries ---------- */
   function blank() { return { at: Object.fromEntries(CATS.map(c => [c, 0])), ward: Object.fromEntries(CATS.map(c => [c, 0])), atA: 0, atI: 0, wdA: 0, wdI: 0 }; }
@@ -120,7 +127,9 @@
     catch (e) { UI.toast(e.message || 'Could not open the report.', 'error', 5000); return; }
     const rows = build(entries, ym, hospitals), info = monthInfo(ym, ctx.profile);
     const clone = (o) => JSON.parse(JSON.stringify(o));
-    let saved = loadManual(ym), editing = false, asking = false;
+    let saved, editing = false, asking = false;
+    try { saved = await loadManual(ym); }
+    catch (e) { UI.toast(e.message || 'Could not open the report.', 'error', 5000); return; }
     const man = clone(saved);                                   // working copy; only written to storage on Save
     const dirty = () => JSON.stringify(man) !== JSON.stringify(saved);
 
@@ -174,13 +183,14 @@
           $$('input[data-k]', body).forEach(i => { i.value = ''; });
           refresh(); UI.toast('Typed values cleared. Press Save to keep this.', 'success'); return false;
         } },
-        { id: 'rptEdit', label: 'Edit', className: 'btn-ghost', close: false, onClick: (h, b) => {
+        { id: 'rptEdit', label: 'Edit', className: 'btn-ghost', close: false, onClick: async (h, b) => {
           if (!editing) {
             setEditing(true); b.textContent = 'Save'; b.className = 'btn btn-primary';
             const first = $('input[data-k]', body); if (first) first.focus({ preventScroll: true });
             return false;
           }
-          saveManual(ym, man); saved = clone(man);
+          try { await saveManual(ym, man); } catch (err) { UI.toast(err.message || 'Could not save.', 'error', 5000); return false; }
+          saved = clone(man);
           setEditing(false); b.textContent = 'Edit'; b.className = 'btn btn-ghost';
           UI.toast('Changes saved.', 'success'); return false;
         } },
@@ -384,6 +394,8 @@
     const known = new Set(cols.map(norm));
     const n = cols.length + 1;
     const rows = buildInq(entries, ym, hospitals, cols), t = totalsInq(rows, n), info = monthInfo(ym, ctx.profile);
+const skipped = entries.filter(e => e.nature_of_inquiry && !known.has(norm(e.nature_of_inquiry))).length;
+if (skipped) UI.toast(skipped + ' entr' + (skipped === 1 ? 'y uses' : 'ies use') + ' an inquiry that is no longer in the Admin list, so ' + (skipped === 1 ? 'it is' : 'they are') + ' not counted in this report.', 'warn', 9000);
 
     const body = document.createElement('div');
     body.innerHTML = `

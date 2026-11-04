@@ -7,18 +7,25 @@
 
   const FAQ = [
     ['How do I add an entry?', 'Open Log Sheet and click Add entry. Fill in the client details, choose the member category, then click Save entry. Use Save and add another to enter several clients in a row.'],
+    ['I cannot choose a date from an earlier month.', 'The Log Sheet shows one month at a time, and dates cannot be in the future. Go to Monthly Log Sheet, click Activate on the month you need, then add or view entries in the Log Sheet.'],
     ['Where are my entries saved?', 'On this laptop only, in the C:\\Temp\\PCares folder. Nothing patient-related is sent to the internet.'],
-    ['How do I back up my data?', 'Go to Profile, then Your data, then click Back up now. A backup is also made automatically once a day.'],
-    ['How do I restore a backup?', 'Go to Profile, then Your data, then click Restore backup and choose a backup from the list.'],
+    ['How do I back up my data?', 'Go to Profile, then Your data, then click Back up now. A backup is also made automatically once a day. Please also copy the backup folder to another drive or USB from time to time.'],
+    ['How do I restore a backup?', 'Go to Profile, then Your data, then click Restore backup and choose a backup from the list. Your current data is saved first, then replaced by the backup you choose.'],
     ['I see a message that the app lost access to the data folder.', 'Refresh the page (Ctrl+F5), then click Allow access when asked. Use Google Chrome or Microsoft Edge on a laptop or desktop.'],
-    ['How do I export the PDF?', 'Open Log Sheet, set the Hospital and the From and To dates, then click Export PDF. Fill in the control number and OPD details, then click Download PDF.'],
+    ['How do I export the PDF?', 'Open Log Sheet, set the Hospital and the From and To dates, then click Export PDF. Type the OPD and PPFF numbers if needed, then click Download PDF.'],
+    ['What is the control number?', 'Each printed page gets a control number (year-month-series), added automatically. After the PDF downloads, confirm the print-out is okay so the number is saved on those entries. If you print entries that already have a number, you will see a warning first.'],
+    ['How do I get the monthly reports?', 'Go to Monthly Log Sheet and click Report on the month you need. Choose Summary (Inpatient) or Nature of Inquiry, then click Export PDF.'],
+    ['How do I fill in NO CO-PAY and the OPD class numbers?', 'These are the only numbers you type in the Summary (Inpatient) report. Click Edit, type the numbers, then click Save. They are saved on this laptop and included in your backups.'],
+    ['Why are some entries missing from the Nature of Inquiry report?', 'Entries whose inquiry was renamed or removed by the admin are not counted. The report shows a message when this happens. Ask the admin to put the inquiry back in the list.'],
     ['Why is Membership status greyed out?', 'Non-Member clients do not have a membership status, so the field is turned off when Non-Member is selected.'],
     ['How do I add a signature?', 'Sign inside the box using mouse, finger or stylus. You can also copy a signature picture, click the box, and press Ctrl+V.'],
     ['I entered a client by mistake.', 'On the Log Sheet, click the pencil icon to edit the entry or the trash icon to delete it.'],
     ['How do I change my hospital?', 'Go to Profile and click Switch hospital.'],
     ['I forgot my password.', 'On the sign-in page, click Forgot password and enter your email. You can also change it in Profile, in the Change password box, if you still know your current one.'],
+    ['My account is locked.', 'After 3 wrong password attempts the account is locked for your protection. On the sign-in page, click Support, send a message to the admin, and wait for the admin to unlock your account.'],
     ['I want to change my username, email or position.', 'Click Edit details in Profile for your name, position and contact number. Username and email can only be changed by the admin, so send a message here.'],
-    ['I cannot see my old entries on another laptop.', 'Entries are saved per laptop. Make a backup on the old laptop and restore it on the new one.']
+    ['I cannot see my old entries on another laptop.', 'Entries are saved per laptop. Make a backup on the old laptop and restore it on the new one.'],
+    ['Can I use PCaresApp on a phone or tablet?', 'No. Entries are saved as files on the laptop, so the app works only in Google Chrome or Microsoft Edge on a laptop or desktop computer.']
   ];
 
   root.innerHTML = `

@@ -95,7 +95,7 @@
       if (item) {
         await API.notifications.markRead(item.dataset.nid);
         const link = item.dataset.link; await loadNotifs();
-        if (link && /^\/(?!\/)/.test(link)) location.href = link; else drawBell();
+        if (link && /^\/(?![\/\\])/.test(link)) location.href = link; else drawBell();
       }
     });
     setInterval(loadNotifs, 60000);
