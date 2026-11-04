@@ -27,7 +27,7 @@
         <nav class="sidebar-nav">${navLinks(page)}</nav>
         <div class="sidebar-foot">
           <div class="user-chip"><span class="avatar">${esc(UI.initials(p.full_name))}</span>
-            <span class="user-meta"><strong>${esc(p.full_name)}</strong><small>${esc(ctx.hospital ? ctx.hospital.name : '')}</small></span></div>
+            <span class="user-meta"><strong>${esc(p.full_name)}</strong><small>${esc(ctx.hospital ? (ctx.hospital.short_name || ctx.hospital.name) : '')}</small></span></div>
           <button class="btn btn-ghost btn-block btn-sm" data-logout>${icon('logout', 18)}<span>Log out</span></button>
         </div>
       </aside>
@@ -48,7 +48,7 @@
       <div class="menu-backdrop" id="menuBackdrop" hidden></div>
       <div class="menu-pop" id="menuPop" hidden>
         <div class="menu-user"><span class="avatar">${esc(UI.initials(p.full_name))}</span>
-          <span class="user-meta"><strong>${esc(p.full_name)}</strong><small>${esc(ctx.hospital ? ctx.hospital.name : '')}</small></span></div>
+          <span class="user-meta"><strong>${esc(p.full_name)}</strong><small>${esc(ctx.hospital ? (ctx.hospital.short_name || ctx.hospital.name) : '')}</small></span></div>
         <nav>${navLinks(page)}</nav>
         <button class="nav-link nav-logout" data-logout>${icon('logout', 20)}<span>Log out</span></button>
       </div>`;

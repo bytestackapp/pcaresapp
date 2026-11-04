@@ -134,11 +134,11 @@
     }
     const start = (state.page - 1) * PAGE;
     const rows = state.view.slice(start, start + PAGE).map((e, i) => ({ e, no: state.view.length - (start + i) }));
-    wrap.innerHTML = `<table class="tbl ls-table"><thead><tr><th>No.</th><th>Date entered</th><th>Control no.</th><th>Hospital</th><th>Name of client</th><th>Name of member</th><th>Name of patient</th><th>Contact</th><th>Signature</th><th>Patient is</th><th>Admission date</th><th>Category</th><th>Status</th><th>Nature of inquiry</th><th>Service</th><th>Walk-in</th><th>PPFF</th><th>PCF1</th><th>Remarks</th><th>Action</th></tr></thead><tbody>${rows.map(({ e, no }) => `<tr>
+    wrap.innerHTML = `<table class="tbl ls-table"><thead><tr><th>No.</th><th>Date entered</th><th>Control no.</th><th>Hospital</th><th>Name of patient</th><th>Name of member</th><th>Name of client</th><th>Contact</th><th>Signature</th><th>Patient is</th><th>Admission date</th><th>Category</th><th>Status</th><th>Nature of inquiry</th><th>Service</th><th>Walk-in</th><th>PPFF</th><th>PCF1</th><th>Remarks</th><th>Action</th></tr></thead><tbody>${rows.map(({ e, no }) => `<tr>
       ${noCell(no)}${dateCell(e)}${ctrlCell(e)}${hospCell(e)}
-      ${td('Client', esc(e.client_name), 'name', e.client_name)}
+      ${td('Patient', esc(e.patient_name), 'name', e.patient_name)}
       ${td('PhilHealth member', esc(e.member_name), '', e.member_name)}
-      ${td('Patient', esc(e.patient_name), '', e.patient_name)}
+      ${td('Client', esc(e.client_name), '', e.client_name)}
       ${td('Contact', esc(e.contact_no), 'nowrap', e.contact_no)}
       ${td('Signature', e.has_signature ? (sigCache.get(e.id) ? `<img class="sig-thumb" src="${sigCache.get(e.id)}" alt="Client signature">` : `<span data-sig="${e.id}" class="muted small">…</span>`) : '', '', e.has_signature ? 'y' : '')}
       ${td('Patient is', e.patient_is === 'member' ? '<span class="badge">Member</span>' : e.patient_is === 'dependent' ? '<span class="badge">Dependent</span>' : '', '', e.patient_is)}

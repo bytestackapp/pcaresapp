@@ -71,7 +71,7 @@
         profile = { ...profile, hospital_id: h.id }; ctx.profile = profile;
         hospital = h; ctx.hospital = h;
         try { localStorage.setItem('ls_last_hospital', h.id); } catch (x) {}
-        document.querySelectorAll('.user-meta small').forEach(el => { el.textContent = h.name; });
+        document.querySelectorAll('.user-meta small').forEach(el => { el.textContent = h.short_name || h.name; });
         draw(); UI.toast('Now working in ' + h.name + '.', 'success');
       } catch (err) { UI.toast(err.message, 'error', 5000); }
     });

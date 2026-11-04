@@ -38,7 +38,7 @@
   --ease-spring: cubic-bezier(.34, 1.7, .5, 1);
   --ease-slide: cubic-bezier(.65, .05, .25, 1);
 
-  --sidebar-w: 248px;
+  --sidebar-w: 280px;
   --topbar-h: 56px;
   --banner-h: 0px;
 }
@@ -180,7 +180,8 @@ img { max-width: 100%; }
 .page-head .lede { margin: 0; color: var(--text-2); }
 .head-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
 
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); }
+.card { background: linear-gradient(115deg, var(--surface) 50%, color-mix(in srgb, var(--primary) 7%, var(--surface)) 100%); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); }
+.card:has(> .table-wrap) { background: var(--surface); }
 .card-pad { padding: 1.25rem; }
 .card-head { display: flex; justify-content: space-between; align-items: center; gap: .75rem; padding: .9rem 1.25rem; border-bottom: 1px solid var(--border); }
 .card-head h3 { font-size: 1rem; font-weight: 600; }
@@ -392,7 +393,7 @@ input::-ms-reveal, input::-ms-clear { display: none; }
 .hero-count span { color: var(--text-2); font-size: .85rem; }
 .hero-actions { grid-column: 1 / -1; display: flex; gap: .5rem; flex-wrap: wrap; }
 .stat-strip { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .75rem; }
-.stat { padding: 1rem 1.25rem; min-height: 92px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; justify-content: flex-start; gap: .2rem; }
+.stat { padding: 1rem 1.25rem; min-height: 92px; background: linear-gradient(115deg, var(--surface) 50%, color-mix(in srgb, var(--primary) 7%, var(--surface)) 100%); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; justify-content: flex-start; gap: .2rem; }
 .stat span { order: -1; font-size: .8125rem; color: var(--text-2); font-weight: 500; }
 .stat b { font-size: 1.75rem; font-weight: 600; line-height: 1.15; font-variant-numeric: tabular-nums; }
 .hbars { display: grid; gap: .8rem; }
@@ -435,6 +436,7 @@ input::-ms-reveal, input::-ms-clear { display: none; }
 .mode-note.is-override { background: var(--danger-soft); color: var(--danger); }
 .mode-note .btn { margin-left: auto; }
 .ls-table td.name { font-weight: 600; }
+.ls-table td.name { color: var(--primary); }
 .ls-table .no { width: 56px; color: var(--text-3); font-variant-numeric: tabular-nums; font-weight: 600; }
 .ls-table .sub { display: block; color: var(--text-3); font-size: .78rem; font-weight: 400; }
 .ls-table .tick { color: var(--primary); }

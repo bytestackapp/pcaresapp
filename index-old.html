@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>PCaresApp</title>
+  <meta name="theme-color" content="#FFFFFF">
+  <link rel="icon" href="/favicon.png?v=2" type="image/png">
+  <link rel="stylesheet" href="/css/global.css">
+  <style>
+    #splashOverlay {
+      position: fixed; inset: 0; z-index: 9999; overflow: hidden;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 0 1.5rem 90px;
+      background: #ffffff;
+      transition: opacity .4s ease;
+    }
+    #splashOverlay.hide { opacity: 0; pointer-events: none; }
+
+    /* top strip: same yellow-to-green band as the PhilHealth branding slide */
+    .sp-strip {
+      position: absolute; top: 0; left: 0; right: 0; height: 10px; z-index: 3;
+      background: linear-gradient(90deg, #F6EB61 0%, #FCE300 30%, #ECE81A 45%, #78BE20 75%, #43B02A 100%);
+    }
+
+    .sp-decor {
+      position: absolute; top: -140px; left: -120px; width: 420px; height: 420px; border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, rgba(252, 227, 0, .38), rgba(120, 190, 32, .10) 70%); z-index: 0;
+    }
+    .sp-decor2 {
+      position: absolute; top: 18%; right: -110px; width: 260px; height: 260px; border-radius: 50%;
+      background: radial-gradient(circle at 60% 40%, rgba(120, 190, 32, .22), rgba(120, 190, 32, 0) 70%); z-index: 0;
+    }
+    .sp-logo { position: relative; z-index: 1; display: block; margin-top: 240px; width: 240px; height: auto; }
+
+    .sp-powered {
+      position: relative; z-index: 1; margin-top: 12rem;
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      font-size: .8rem; letter-spacing: .04em; color: #4A5A45;
+    }
+    .sp-powered img { height: 38px; width: auto; display: block; }
+
+    .sp-bar {
+      position: relative; z-index: 1; margin-top: 1.2rem; width: 180px; height: 6px; border-radius: 3px;
+      background: rgba(120, 190, 32, .2); overflow: hidden;
+    }
+    .sp-bar::after {
+      content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 0; border-radius: 3px;
+      background:
+        linear-gradient(100deg, transparent 0%, rgba(255,255,255,.65) 50%, transparent 100%) -60px 0 / 60px 100% no-repeat,
+        linear-gradient(90deg, #43B02A, #78BE20 60%, #FCE300);
+    }
+    #splashOverlay.run .sp-bar::after {
+      animation: spFill var(--splash-ms, 5000ms) linear forwards, spShine 1.1s linear infinite;
+    }
+    @keyframes spFill { 0% { width: 0; } 20% { width: 18%; } 55% { width: 62%; } 80% { width: 86%; } 100% { width: 100%; } }
+    @keyframes spShine { from { background-position: -60px 0, 0 0; } to { background-position: calc(100% + 60px) 0, 0 0; } }
+
+    .sp-waves { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 220px; z-index: 0; }
+    .sp-version {
+      position: absolute; left: 0; width: 100%; bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+      text-align: center; font-size: .75rem; line-height: 1.5; letter-spacing: .04em;
+      color: #000000; font-weight: 600; z-index: 3;
+    }
+  </style>
+</head>
+<body class="splash-body public">
+  <div id="splashOverlay" aria-busy="true">
+    <div class="sp-strip"></div>
+    <div class="sp-decor"></div>
+    <div class="sp-decor2"></div>
+    <img id="splashLogo" class="sp-logo" src="/image/logo.png" alt="PhilHealth">
+
+    <div class="sp-bar" role="status" aria-label="Loading"></div>
+
+    <div class="sp-powered">
+      <span>Powered by:</span>
+      <img src="/image/bytestack.png" alt="Bytestack">
+    </div>
+
+    <svg class="sp-waves" viewBox="0 0 1440 320" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="wYellow" x1="0" x2="1"><stop offset="0" stop-color="#F6EB61"/><stop offset="1" stop-color="#FCE300"/></linearGradient>
+        <linearGradient id="wGreen" x1="0" x2="1"><stop offset="0" stop-color="#78BE20"/><stop offset="1" stop-color="#6CC24A"/></linearGradient>
+      </defs>
+      <path d="M0 150 C 280 250 520 280 820 200 C 1060 135 1250 80 1440 90 L1440 320 L0 320 Z" fill="url(#wYellow)"/>
+      <path d="M0 270 C 330 300 600 300 900 230 C 1120 180 1300 120 1440 150 L1440 320 L0 320 Z" fill="url(#wGreen)" opacity=".95"/>
+      <path d="M0 320 C 500 320 900 310 1120 260 C 1260 228 1360 190 1440 200 L1440 320 Z" fill="#43B02A"/>
+    </svg>
+
+    <div class="sp-version">
+      <div id="splashVersion"></div>
+      <div>&copy; <span id="splashYear">2026</span> Bytestack. All Rights Reserved.</div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/splash.js"></script>
+</body>
+</html>
