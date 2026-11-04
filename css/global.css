@@ -735,6 +735,7 @@ input[type="password"]::-webkit-credentials-auto-fill-button { visibility: hidde
 .rpt-table td.in input { width: 100%; min-width: 0; border: 0; background: transparent; color: var(--text); font: inherit; text-align: center; padding: .28rem .3rem; -moz-appearance: textfield; }
 .rpt-table td.in input::-webkit-outer-spin-button, .rpt-table td.in input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .rpt-table td.in input:focus { outline: 2px solid var(--primary); outline-offset: -2px; background: var(--primary-soft); }
-.rpt-table tr.rpt-empty td { color: var(--text-3); }
 .rpt-table tfoot td, .rpt-total td { font-weight: 700; background: var(--surface-3); }
 .rpt-none { padding: 1rem !important; color: var(--text-3); }
+.rpt-table td.z { color: color-mix(in srgb, var(--text) 50%, transparent); font-weight: 400; }
+.rpt-table td.in input::placeholder { color: color-mix(in srgb, var(--text) 50%, transparent); opacity: 1; }

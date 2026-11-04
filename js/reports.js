@@ -74,17 +74,17 @@
   function dayRowsHtml(rows, man) {
     return rows.map((r, i) => {
       const dayCell = `<td class="c-day">${r.day}</td>`;
-      if (!r.d) return `<tr class="rpt-empty">${dayCell}<td class="c-hci"></td>${'<td></td>'.repeat(26)}${'<td></td>'.repeat(3)}</tr>`;
+      if (!r.d) return `<tr class="rpt-empty">${dayCell}<td class="c-hci"></td>${'<td class="z">0</td>'.repeat(29)}</tr>`;
       const v = cells(r, man), m = man[r.key] || {};
-      const body = v.slice(0, 26).map((x, k) => `<td class="${TOTAL_IDX.includes(k) ? 'tot' : ''}">${show(x, TOTAL_IDX.includes(k))}</td>`).join('');
-      const inp = MANUAL.map(f => `<td class="in"><input type="number" min="0" inputmode="numeric" data-k="${esc(r.key)}" data-f="${f}" value="${m[f] ? esc(m[f]) : ''}" aria-label="${f} day ${r.day}"></td>`).join('');
+      const body = v.slice(0, 26).map((x, k) => `<td class="${TOTAL_IDX.includes(k) ? 'tot' : ''}${x ? '' : ' z'}">${x}</td>`).join('');
+      const inp = MANUAL.map(f => `<td class="in"><input type="number" min="0" inputmode="numeric" data-k="${esc(r.key)}" data-f="${f}" value="${m[f] ? esc(m[f]) : ''}" placeholder="0" aria-label="${f} day ${r.day}"></td>`).join('');
       return `<tr>${dayCell}<td class="c-hci">${esc(r.hci)}</td>${body}${inp}</tr>`;
     }).join('');
   }
-  const totRowHtml = (label, t) => `<tr class="rpt-total"><td colspan="2">${label}</td>${t.map(x => `<td>${x}</td>`).join('')}</tr>`;
+  const totRowHtml = (label, t) => `<tr class="rpt-total"><td colspan="2">${label}</td>${t.map(x => `<td class="${x ? '' : 'z'}">${x}</td>`).join('')}</tr>`;
 
   function hciTableHtml(t) {
-    const rows = t.hcis.map((h, i) => `<tr><td class="c-day">${i + 1}</td><td class="c-hci">${esc(h.hci)}</td>${h.v.map((x, k) => `<td class="${TOTAL_IDX.includes(k) ? 'tot' : ''}">${x}</td>`).join('')}</tr>`).join('');
+    const rows = t.hcis.map((h, i) => `<tr><td class="c-day">${i + 1}</td><td class="c-hci">${esc(h.hci)}</td>${h.v.map((x, k) => `<td class="${TOTAL_IDX.includes(k) ? 'tot' : ''}${x ? '' : ' z'}">${x}</td>`).join('')}</tr>`).join('');
     return `<table class="rpt-table">${head('No.')}<tbody>${rows || '<tr><td colspan="31" class="rpt-none">No entries for this month.</td></tr>'}</tbody><tfoot>${totRowHtml('GRAND TOTAL', t.grand)}</tfoot></table>`;
   }
 
@@ -160,77 +160,115 @@
     });
   }
 
-  /* ---------- PDF (A4 landscape) ---------- */
+  /* ---------- PDF (A4 landscape) — laid out like the original form ---------- */
   async function exportPdf(rows, man, info, ym, t) {
     const { PDFDocument, StandardFonts, rgb } = PDFLib;
     const doc = await PDFDocument.create();
-    const f = await doc.embedFont(StandardFonts.Helvetica), fb = await doc.embedFont(StandardFonts.HelveticaBold);
+    const fb = await doc.embedFont(StandardFonts.TimesRomanBold);          // the original form is all bold serif
     doc.setTitle('Summary (Inpatient) · ' + info.month); doc.setProducer(C.APP_NAME); doc.setCreator(C.APP_NAME);
-    const PW = 841.89, PH = 595.28, M = 22, black = rgb(0, 0, 0), shade = rgb(.9, .9, .9);
-    const safe = (s, font) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim().split('').map(ch => { try { font.widthOfTextAtSize(ch, 8); return ch; } catch (e) { return '?'; } }).join('');
+    const PW = 841.92, PH = 595.32, black = rgb(0, 0, 0), lightGray = rgb(.5, .5, .5);
+    const safe = (s) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim().split('').map(ch => { try { fb.widthOfTextAtSize(ch, 8); return ch; } catch (e) { return '?'; } }).join('');
 
-    // column widths: Day, HCI, 26 data columns, 3 manual columns
-    const wDay = 22, wHci = 38, wMan = 31, wData = (PW - 2 * M - wDay - wHci - 3 * wMan) / 26;
-    const W = [wDay, wHci, ...new Array(26).fill(wData), wMan, wMan, wMan];
-    const X = [M]; W.forEach(w => X.push(X[X.length - 1] + w));
-    const RH = 10, HH = 11;
+    let logo = null;
+    try { const r = await fetch(C.LOGO_CARES); if (r.ok) logo = await doc.embedPng(await r.arrayBuffer()); } catch (e) { logo = null; }
+
+    // geometry measured from the original (1280px-wide render → points)
+    const K = PW / 1280, L0 = 28 * K;
+    const PXW = [22, 208, ...new Array(9).fill(32.3), 37, 32.3, 32.3, 32.3, ...new Array(9).fill(32.3), 37, 34, 34, 34, 32, 35, 37];
+    const sc = (1217 - 28) * K / PXW.reduce((a, b) => a + b, 0);
+    const X = [L0]; PXW.forEach(w => X.push(X[X.length - 1] + w * K * (1217 - 28) / PXW.reduce((a, b) => a + b, 0)));
+    const RH = 10.9, HH = [10, 10, 13.5], HT = HH[0] + HH[1] + HH[2];
+    const THICK = 1.1, THIN = .5;
 
     let page = doc.addPage([PW, PH]);
-    const Yt = (y) => PH - y;                                  // y from top
-    function line(x0, y0, x1, y1, th = .5) { page.drawLine({ start: { x: x0, y: Yt(y0) }, end: { x: x1, y: Yt(y1) }, thickness: th, color: black }); }
-    function cell(text, c0, c1, y0, y1, o = {}) {              // c0..c1 = column indexes (inclusive), centered text, wraps to fit
-      const x0 = X[c0], x1 = X[c1 + 1], font = o.bold ? fb : f; let size = o.size || 6.2;
-      const maxW = x1 - x0 - 2;
-      if (o.fill) page.drawRectangle({ x: x0, y: Yt(y1), width: x1 - x0, height: y1 - y0, color: shade });
-      page.drawRectangle({ x: x0, y: Yt(y1), width: x1 - x0, height: y1 - y0, borderColor: black, borderWidth: .5 });
-      const words = o.nowrap ? [safe(text, font)] : safe(text, font).split(' ').filter(Boolean), lines = []; let cur = '';
-      words.forEach(w => { const tt = cur ? cur + ' ' + w : w; if (font.widthOfTextAtSize(tt, size) <= maxW || !cur) cur = tt; else { lines.push(cur); cur = w; } });
+    const Yt = (y) => PH - y;
+    const hline = (x0, x1, y, th) => page.drawLine({ start: { x: x0, y: Yt(y) }, end: { x: x1, y: Yt(y) }, thickness: th, color: black });
+    const vline = (x, y0, y1, th) => page.drawLine({ start: { x, y: Yt(y0) }, end: { x, y: Yt(y1) }, thickness: th, color: black });
+    const box = (x0, y0, x1, y1, th) => page.drawRectangle({ x: x0, y: Yt(y1), width: x1 - x0, height: y1 - y0, borderColor: black, borderWidth: th });
+
+    // text inside columns c0..c1; wraps, shrinks if still too wide
+    function cell(text, c0, c1, y0, y1, o = {}) {
+      const x0 = X[c0], x1 = X[c1 + 1]; let size = o.size || 6;
+      const pad = o.pad == null ? 1.2 : o.pad, maxW = x1 - x0 - pad * 2;
+      const words = o.nowrap ? [safe(text)] : safe(text).split(' ').filter(Boolean), lines = []; let cur = '';
+      words.forEach(w => { const tt = cur ? cur + ' ' + w : w; if (fb.widthOfTextAtSize(tt, size) <= maxW || !cur) cur = tt; else { lines.push(cur); cur = w; } });
       if (cur) lines.push(cur);
-      const widest = Math.max(0, ...lines.map(l => font.widthOfTextAtSize(l, size)));
-      if (widest > maxW) size = Math.max(3.6, size * maxW / widest);
-      const lh = size * 1.15, cy = Yt((y0 + y1) / 2);
-      lines.forEach((l, i) => page.drawText(l, { x: x0 + (x1 - x0 - font.widthOfTextAtSize(l, size)) / 2, y: cy + ((lines.length - 1) / 2 - i) * lh - size * .34, size, font, color: black }));
+      const widest = Math.max(0, ...lines.map(l => fb.widthOfTextAtSize(l, size)));
+      if (widest > maxW && widest > 0) size = Math.max(3.4, size * maxW / widest);
+      const lh = size * 1.12, cy = Yt((y0 + y1) / 2);
+      lines.forEach((l, i) => {
+        const w = fb.widthOfTextAtSize(l, size);
+        const x = o.left ? x0 + pad : x0 + (x1 - x0 - w) / 2;
+        page.drawText(l, { x, y: cy + ((lines.length - 1) / 2 - i) * lh - size * .32, size, font: fb, color: o.gray ? lightGray : black });
+      });
     }
+    const grid = (c0, c1, y0, y1) => { for (let c = c0; c <= c1 + 1; c++) vline(X[c], y0, y1, THIN); };
+
     function header(y, first) {
-      const y1 = y + HH, y2 = y + 2 * HH, y3 = y + 3 * HH;
-      cell(first, 0, 0, y, y3, { bold: true, fill: true }); cell('HCI', 1, 1, y, y3, { bold: true, fill: true });
-      cell('Inpatient (At post)', 2, 14, y, y1, { bold: true, fill: true }); cell('Inpatient (Ward Class)', 15, 27, y, y1, { bold: true, fill: true });
-      [['NO CO-PAY', 28], ['No. of OPD Class Conducted', 29], ['No. of CS During OPD Class', 30]].forEach(([s, c]) => cell(s, c, c, y, y3, { bold: true, fill: true, size: 5.4 }));
-      [2, 15].forEach(s => { cell('Category', s, s + 9, y1, y2, { bold: true, fill: true }); cell('Status', s + 10, s + 12, y1, y2, { bold: true, fill: true }); });
+      const y1 = y + HH[0], y2 = y1 + HH[1], y3 = y + HT;
+      // vertical lines (each header level only where cells are separate)
+      vline(X[1], y, y3, THIN); vline(X[2], y, y3, THIN); vline(X[15], y, y3, THIN); vline(X[28], y, y3, THIN); vline(X[29], y, y3, THIN); vline(X[30], y, y3, THIN);
+      [2, 15].forEach(s => { vline(X[s + 10], y1, y3, THIN); grid(s, s + 12, y2, y3); });
+      hline(X[2], X[28], y1, THIN); hline(X[2], X[28], y2, THIN); hline(L0, X[31], y3, THIN);
+      cell(first, 0, 0, y, y3, { size: 6.4, pad: .6 }); cell('HCI', 1, 1, y, y3, { size: 6.4 });
+      cell('Inpatient (At post)', 2, 14, y, y1, { size: 6.2 }); cell('Inpatient (Ward Class)', 15, 27, y, y1, { size: 6.2 });
+      [['NO CO-PAY', 28], ['No. of OPD Class Conducted', 29], ['No. of CS During OPD Class', 30]].forEach(([s, c]) => cell(s, c, c, y, y3, { size: 5.8, pad: .8 }));
       [2, 15].forEach(s => {
-        CATS.forEach((c, i) => cell(c, s + i, s + i, y2, y3, { bold: true, fill: true, size: 5.6 }));
-        ['TOTAL', 'Active', 'Inactive', 'TOTAL'].forEach((l, i) => cell(l, s + 9 + i, s + 9 + i, y2, y3, { bold: true, fill: true, size: 5.4 }));
+        cell('Category', s, s + 9, y1, y2, { size: 6 }); cell('Status', s + 10, s + 12, y1, y2, { size: 6 });
+        CATS.forEach((c, i) => cell(c, s + i, s + i, y2, y3, { size: 5.8, pad: .6 }));
+        ['TOTAL', 'Active', 'Inactive', 'TOTAL'].forEach((l, i) => cell(l, s + 9 + i, s + 9 + i, y2, y3, { size: 5.4, pad: .5, nowrap: true }));
       });
       return y3;
     }
-    function rowOut(first, hci, vals, y, o = {}) {
-      cell(first, 0, 0, y, y + RH, o); cell(hci, 1, 1, y, y + RH, { ...o, nowrap: true });
-      vals.forEach((v, i) => cell(v === '' ? '' : String(v), 2 + i, 2 + i, y, y + RH, { ...o, bold: o.bold || (o.totCols && TOTAL_IDX.includes(i)) }));
+    function dataRow(first, hci, vals, y) {
+      grid(0, 30, y, y + RH); hline(L0, X[31], y + RH, THIN);
+      cell(first, 0, 0, y, y + RH, { size: 6, left: true, pad: 3 });
+      cell(hci, 1, 1, y, y + RH, { size: 6, left: true, pad: 3, nowrap: true });
+      vals.forEach((v, i) => cell(String(v || 0), 2 + i, 2 + i, y, y + RH, { size: 6, gray: !v }));
+    }
+    function totalRow(arr, y) {
+      vline(X[0], y, y + RH, THIN); for (let c = 2; c <= 31; c++) vline(X[c], y, y + RH, THIN);
+      cell('GRAND TOTAL', 0, 1, y, y + RH, { size: 6.2, left: true, pad: 2 });
+      arr.forEach((v, i) => cell(String(v || 0), 2 + i, 2 + i, y, y + RH, { size: 6, gray: !v }));
     }
 
-    // title block
-    const title = 'SUMMARY ( INPATIENT )', tw = fb.widthOfTextAtSize(title, 12);
-    page.drawText(title, { x: (PW - tw) / 2, y: Yt(M + 10), size: 12, font: fb, color: black });
-    const sub = `Name of P-CARES:  ${safe(info.name, f)}        Month:  ${safe(info.month, f)}        Date/s Covered:  ${safe(info.covered, f)}`;
-    page.drawText(sub, { x: M, y: Yt(M + 28), size: 8, font: f, color: black });
+    // ---- title, logo, info box ----
+    const title = 'SUMMARY ( INPATIENT )', tsz = 10.6, tw = fb.widthOfTextAtSize(title, tsz);
+    page.drawText(title, { x: PW * 542 / 1280 - tw / 2, y: Yt(28.5), size: tsz, font: fb, color: black });
+    if (logo) { const w = 120, h = w * logo.height / logo.width; page.drawImage(logo, { x: 888 * K, y: Yt(34 + h / 2), width: w, height: h }); }
 
-    // daily table
-    let y = header(M + 36, 'Day');
+    const top = 68 * K, boxBottom = top + 10.2, tableTop = 91 * K;
+    const infoY = Yt((top + boxBottom) / 2) - 2.1;
+    page.drawText('Name of P-CARES: ' + safe(info.name), { x: L0 + 1.5, y: infoY, size: 6.6, font: fb, color: black });
+    page.drawText('Month: ' + safe(info.month), { x: 377 * K, y: infoY, size: 6.6, font: fb, color: black });
+    page.drawText('Date/s Covered: ' + safe(info.covered), { x: 538 * K, y: infoY, size: 6.6, font: fb, color: black });
+
+    // ---- daily table ----
+    let y = tableTop, yBoxTop = tableTop;
+    box(L0, top, X[31], boxBottom, THICK);                      // name / month / date box is its own block
+    let hEnd = header(y, 'Day'); y = hEnd;
     rows.forEach(r => {
-      if (y + 2 * RH > PH - M) { page = doc.addPage([PW, PH]); y = header(M, 'Day'); }   // keep room for the grand total
-      if (!r.d) rowOut(String(r.day), '', new Array(29).fill(''), y);
-      else { const v = cells(r, man); rowOut(String(r.day), r.hci, v.map((x, i) => (x || TOTAL_IDX.includes(i)) ? x : ''), y, { totCols: true }); }
+      if (y + 2 * RH > PH - 24) { box(L0, yBoxTop, X[31], y, THICK); page = doc.addPage([PW, PH]); yBoxTop = 24; y = header(yBoxTop, 'Day'); }
+      if (!r.d) dataRow(String(r.day), '', new Array(29).fill(0), y);
+      else dataRow(String(r.day), r.hci, cells(r, man), y);
       y += RH;
     });
-    const tot = (label, arr, yy) => { cell(label, 0, 1, yy, yy + RH, { bold: true, fill: true }); arr.forEach((v, i) => cell(String(v), 2 + i, 2 + i, yy, yy + RH, { bold: true, fill: true })); };
-    tot('GRAND TOTAL', t.grand, y); y += RH + 14;
+    totalRow(t.grand, y); y += RH;
+    box(L0, yBoxTop, X[31], y, THICK);
+    y += 15;
 
-    // HCI summary table (new page if it does not fit)
-    const need = 3 * HH + (t.hcis.length + 1) * RH;
-    if (y + need > PH - M) { page = doc.addPage([PW, PH]); y = M; }
+    // ---- HCI summary table (at least 5 rows like the form) ----
+    const n = Math.max(5, t.hcis.length);
+    if (y + HT + (n + 1) * RH > PH - 20) { page = doc.addPage([PW, PH]); y = 24; }
+    const y2top = y;
     y = header(y, 'No.');
-    t.hcis.forEach((h, i) => { rowOut(String(i + 1), h.hci, h.v, y, { totCols: true }); y += RH; });
-    tot('GRAND TOTAL', t.grand, y);
+    for (let i = 0; i < n; i++) {
+      const h = t.hcis[i];
+      if (h) dataRow(String(i + 1), h.hci, h.v, y); else dataRow(String(i + 1), '', new Array(29).fill(0), y);
+      y += RH;
+    }
+    totalRow(t.grand, y); y += RH;
+    box(L0, y2top, X[31], y, THICK);
 
     const bytes = await doc.save();
     const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
