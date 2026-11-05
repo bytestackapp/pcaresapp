@@ -109,7 +109,7 @@
   const filterActive = () => state.filter.hospital || state.filter.from || state.filter.to || state.search.trim();
 
   function actionsCell(e, no) {
-    return `<td class="actions"><button class="icon-btn" data-act="edit" data-id="${e.id}" aria-label="Edit entry ${no}" title="Edit">${icon('edit', 18)}</button><button class="icon-btn danger" data-act="del" data-id="${e.id}" aria-label="Delete entry ${no}" title="Delete">${icon('trash', 18)}</button></td>`;
+    return `<td class="actions"><button class="icon-btn" data-act="copy" data-id="${e.id}" aria-label="Copy entry ${no}" title="Copy">${icon('copy', 18)}</button><button class="icon-btn" data-act="edit" data-id="${e.id}" aria-label="Edit entry ${no}" title="Edit">${icon('edit', 18)}</button><button class="icon-btn danger" data-act="del" data-id="${e.id}" aria-label="Delete entry ${no}" title="Delete">${icon('trash', 18)}</button></td>`;
   }
   const noCell = (no) => `<td class="no" data-label="No.">${no}</td>`;
   const dateCell = (e) => td('Date entered', esc(L.fmtDate(e.entry_date)), 'nowrap', e.entry_date);
@@ -445,13 +445,15 @@
     return null;
   }
 
-  async function openEntryModal(entry) {
+    async function openEntryModal(entry, asCopy) {
     let e = entry || {};
     if (entry && entry.has_signature) { try { e = { ...entry, signature: await API.entries.signature(entry.id) }; } catch (x) {} }
+    if (asCopy) { const { id, control_no, printed_at, created_at, updated_at, created_by, has_signature, ...rest } = e; e = rest; }
+    const isEdit = !!entry && !asCopy;
     const h = UI.modal({
-      title: entry ? 'Edit entry' : 'Add entry', headIcon: entry ? 'edit' : 'plus', size: '', className: 'modal-entry', persistent: true,
+      title: isEdit ? 'Edit entry' : asCopy ? 'Copy entry' : 'Add entry', headIcon: isEdit ? 'edit' : asCopy ? 'copy' : 'plus', size: '', className: 'modal-entry', persistent: true,
       body: formHTML(e),
-      footer: entry
+      footer: isEdit
         ? [{ label: 'Cancel', className: 'btn-ghost' }, { id: 'entrySave', label: 'Save changes', className: 'btn-primary', onClick: (hh, b) => save(hh, b, entry, false) }]
         : [{ label: 'Cancel', className: 'btn-ghost' }, { id: 'entryAnother', label: 'Save and add another', className: 'btn-ghost', onClick: (hh, b) => save(hh, b, null, true) },
            { id: 'entrySave', label: 'Save entry', className: 'btn-primary', onClick: (hh, b) => save(hh, b, null, false) }]
@@ -490,7 +492,11 @@
     const e = state.all.find(x => x.id === id); if (!e) return;
     const ok = await UI.confirm({
       title: 'Delete this entry?', danger: true, confirmText: 'Delete entry', iconName: 'trash',
-      message: `<p><strong>${esc(e.patient_name || e.client_name || 'This entry')}</strong> (${esc(L.fmtDate(e.entry_date, 'long'))}, ${esc(e.hospital_name || '')}) will be removed. This cannot be undone. Make sure you have a recent backup if you may need it again.</p>`
+      message: `<p>Below item will be removed.</p>
+        <p><strong>${esc(e.patient_name || e.client_name || 'This entry')}</strong></p>
+        <p style="margin-top:-2px">Hospital: ${esc(e.hospital_name || '')}</p>
+        <p style="margin-top:-2px">Date entered: ${esc(L.fmtDate(e.entry_date, 'long'))}</p>
+        <p>This cannot be undone. Make sure you have a recent backup if you may need it again.</p>`
     });
     if (!ok) return;
     try { await API.entries.remove(id); } catch (err) { UI.toast(err.message, 'error', 5000); return; }
@@ -520,36 +526,69 @@
   }
 
   /* ============================== export ============================== */
-    function openExportModal() {
+  async function openExportModal() {
     if (!state.view.length) { UI.toast('There are no entries to export.', 'error'); return; }
+    const ym = L.activeMonth(), FIELD = { n: 'opdN', c: 'opdC', p: 'ppff' };
+    let man, editing = false;
+    try { man = await API.reportManual.get(ym); } catch (e) { UI.toast(e.message, 'error', 5000); return; }
     const m = new Map();
     state.view.forEach(e => {
-      const key = e.hospital_id + '|' + e.entry_date;
+      const key = e.entry_date + '|' + (e.hospital_id || '');
       if (!m.has(key)) m.set(key, { key, hospital: e.hospital_name || '', date: e.entry_date });
     });
     const gs = [...m.values()].sort((a, b) => a.hospital.localeCompare(b.hospital) || String(a.date).localeCompare(b.date));
     const multiH = new Set(gs.map(g => g.hospital)).size > 1;
-    const inp = (g, f) => `<input class="input" data-g="${esc(g.key)}" data-f="${f}" type="number" min="0" inputmode="numeric" placeholder="0" aria-label="${f}">`;
+    const inp = (g, f) => `<input class="input" data-g="${esc(g.key)}" data-f="${f}" type="number" min="0" inputmode="numeric" placeholder="0" disabled value="${esc((man[g.key] || {})[FIELD[f]] || '')}" aria-label="${f}">`;
     const rowsHtml = gs.map(g => `<tr>
         <td class="nowrap"><strong>${esc(L.fmtDate(g.date))}</strong></td>
         ${multiH ? `<td>${esc(g.hospital)}</td>` : ''}
         <td>${inp(g, 'n')}</td><td>${inp(g, 'c')}</td><td>${inp(g, 'p')}</td></tr>`).join('');
-    UI.modal({
+    const setEditing = (h, on) => { editing = on; h.el.querySelectorAll('input[data-g]').forEach(i => { i.disabled = !on; }); };
+    const saveNow = UI.debounce(async () => {
+      try { await API.reportManual.set(ym, JSON.parse(JSON.stringify(man))); }
+      catch (e) { UI.toast(e.message, 'error', 5000); }
+    }, 400);
+    const h = UI.modal({
       title: 'Export PDF', headIcon: 'download', size: 'lg', className: 'modal-export',
       body: `<div id="expAlert" class="alert" hidden></div>
-        <p class="help" style="margin-bottom:.8rem">${gs.length} sheet${gs.length === 1 ? '' : 's'} will be exported. Leave a box empty if not needed.</p>
+        <p class="help" style="margin-bottom:.8rem">${gs.length} sheet${gs.length === 1 ? '' : 's'} will be exported. Each page gets its own control no. (year-month-series), starting at 01 every month. Press Edit to change the numbers. They are saved automatically.</p>
         <div class="table-wrap exp-wrap"><table class="tbl exp-table"><thead><tr>
           <th>Date entered</th>${multiH ? '<th>Hospital</th>' : ''}
           <th>No. of times OPD class is conducted</th><th>No. of clients served during OPD class</th><th>Total No. of PPFF administered</th>
         </tr></thead><tbody>${rowsHtml}</tbody></table></div>`,
-      footer: [{ label: 'Cancel', className: 'btn-ghost' }, { id: 'expGo', label: 'Download PDF', className: 'btn-primary', onClick: (hh, b) => doExport(hh, b) }]
+      footer: [
+        { label: 'Cancel', className: 'btn-ghost' },
+        { id: 'expEdit', label: 'Edit', className: 'btn-ghost', close: false, onClick: async (hh, b) => {
+          if (!editing) {
+            setEditing(hh, true); b.textContent = 'Save'; b.className = 'btn btn-primary';
+            const first = hh.el.querySelector('input[data-g]'); if (first) first.focus({ preventScroll: true });
+            return false;
+          }
+          try { await API.reportManual.set(ym, JSON.parse(JSON.stringify(man))); }
+          catch (e) { UI.toast(e.message, 'error', 5000); return false; }
+          setEditing(hh, false); b.textContent = 'Edit'; b.className = 'btn btn-ghost';
+          UI.toast('Changes saved.', 'success'); return false;
+        } },
+        { id: 'expGo', label: 'Download PDF', className: 'btn-primary', onClick: (hh, b) => {
+          if (editing) { UI.toast('Press Save first, then download.', 'info'); return false; }
+          return doExport(hh, b);
+        } }
+      ]
+    });
+    h.el.addEventListener('input', (ev) => {
+      const i = ev.target.closest('input[data-g]'); if (!i || !editing) return;
+      const k = i.dataset.g, f = FIELD[i.dataset.f], raw = i.value.trim();
+      const rec = man[k] = man[k] || {};
+      if (raw === '') delete rec[f]; else rec[f] = String(Math.max(0, parseInt(raw, 10) || 0));
+      if (!Object.keys(rec).length) delete man[k];
+      saveNow();
     });
   }
 
   async function doExport(h, btn) {
     const box = $('#expAlert', h.el); box.hidden = true;
     if (!window.PDFLib) { UI.showAlert(box, 'The PDF library did not load. Check your internet connection and try again.'); return false; }
-    const val = (key, f) => { const el = h.el.querySelector(`[data-g="${key}"][data-f="${f}"]`); const v = el ? el.value.trim() : ''; return v === '' ? null : Math.max(0, parseInt(v, 10) || 0); };
+    const val = (key, f) => { const el = h.el.querySelector(`[data-g="${key}"][data-f="${f}"]`); const v = el ? el.value.trim() : ''; return v === '' ? 0 : Math.max(0, parseInt(v, 10) || 0); };
     const manualFor = (key) => ({ pcare_name: profile.full_name, opd_class_count: val(key, 'n'), opd_class_clients: val(key, 'c'), ppff_total: val(key, 'p') });
 
     const printed = state.view.filter(e => e.control_no);
@@ -600,7 +639,7 @@
           controls.push(control);
           chunk.forEach(e => marks.set(e.id, control));
         }
-        return { date: entries[0].entry_date, dateTo: entries[entries.length - 1].entry_date, hospital: g.hospital, sheet: { ...manualFor(g.hospital_id + '|' + g.date), control_no: controls[0] }, controls, entries };
+        return { date: entries[0].entry_date, dateTo: entries[entries.length - 1].entry_date, hospital: g.hospital, sheet: { ...manualFor(g.date + '|' + (g.hospital_id || '')), control_no: controls[0] }, controls, entries };
       });
       controlList = [...new Set(days.flatMap(d => d.controls))].sort();
 
@@ -651,6 +690,7 @@
   $('#tableWrap').addEventListener('click', (e) => {
     const b = e.target.closest('[data-act]'); if (!b) return;
     if (b.dataset.act === 'edit') openEntryModal(state.all.find(x => x.id === b.dataset.id));
+    else if (b.dataset.act === 'copy') openEntryModal(state.all.find(x => x.id === b.dataset.id), true);
     else delEntry(b.dataset.id);
   });
   document.addEventListener('visibilitychange', () => { if (!document.hidden && !state.loading && !state.error && !$('.modal-backdrop')) load(true); });

@@ -832,3 +832,5 @@ input[type="password"]::-webkit-credentials-auto-fill-button { visibility: hidde
 .app-foot { width: 100%; max-width: 1320px; margin: 0 auto; padding: 1.1rem 1.5rem; }
 @media (max-width: 899px) { .app-foot { padding: 1rem; } }
 
+.exp-table td .input:disabled { color: var(--text); -webkit-text-fill-color: var(--text); opacity: 1; cursor: default; }
+

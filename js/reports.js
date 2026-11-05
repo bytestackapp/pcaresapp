@@ -195,11 +195,11 @@
         { label: 'Close', className: 'btn-ghost' },
         { id: 'rptClear', label: 'Clear', className: 'btn-ghost', close: false, onClick: async () => {
           if (!editing) { UI.toast('Press Edit first.', 'info'); return false; }
-          if (!Object.keys(man).some(k => k.indexOf('d|') !== 0)) { UI.toast('There is nothing to clear.', 'info'); return false; }
+          if (!Object.keys(man).some(k => k.indexOf('d|') !== 0 && MANUAL.some(f => man[k][f]))) { UI.toast('There is nothing to clear.', 'info'); return false; }
           const go = await UI.confirm({ title: 'Clear typed values?', confirmText: 'Clear', danger: true, iconName: 'alert',
             message: '<p>This clears NO CO-PAY, No. of OPD Class Conducted and No. of CS During OPD Class for this month. Press Save afterwards to keep the change. The counts from your entries are not affected.</p>' });
           if (!go) return false;
-          Object.keys(man).forEach(k => { if (k.indexOf('d|') !== 0) delete man[k]; });
+          Object.keys(man).forEach(k => { if (k.indexOf('d|') === 0) return; MANUAL.forEach(f => delete man[k][f]); if (!Object.keys(man[k]).length) delete man[k]; });
           $$('input[data-k]', body).forEach(i => { i.value = ''; });
           refresh(); UI.toast('Typed values cleared. Press Save to keep this.', 'success'); return false;
         } },
