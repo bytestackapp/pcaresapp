@@ -727,11 +727,11 @@ input[type="password"]::-webkit-credentials-auto-fill-button { visibility: hidde
 .rpt-table { border-collapse: collapse; font-size: .72rem; width: max-content; font-variant-numeric: tabular-nums; }
 .rpt-table th, .rpt-table td { border: 1px solid var(--border-strong); padding: .22rem .3rem; text-align: center; min-width: 2.1rem; }
 .rpt-table th { background: var(--surface-3); font-weight: 600; white-space: nowrap; }
-.rpt-table th[rowspan="3"]:nth-last-child(-n+3) { white-space: normal; width: 5.5rem; min-width: 5.5rem; max-width: 6.5rem; line-height: 1.2; }
+.rpt-table th[rowspan="3"]:nth-last-child(-n+3) { white-space: normal; width: 3.6rem; min-width: 3.6rem; max-width: 3.6rem; line-height: 1.15; font-size: .62rem; }
 .rpt-table .c-day { min-width: 2.4rem; }
 .rpt-table .c-hci { min-width: 4.2rem; white-space: nowrap; }
 .rpt-table td.tot { font-weight: 600; background: var(--surface-2); }
-.rpt-table td.in { padding: 0; min-width: 5.5rem; background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 4%, var(--surface)), color-mix(in srgb, var(--primary) 16%, var(--surface))); }
+.rpt-table td.in { padding: 0; min-width: 3.6rem; width: 3.6rem; background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 4%, var(--surface)), color-mix(in srgb, var(--primary) 16%, var(--surface))); }
 .rpt-table td.in input { width: 100%; min-width: 0; border: 0; background: transparent; color: var(--text); font: inherit; text-align: center; padding: .28rem .3rem; -moz-appearance: textfield; }
 .rpt-table td.in input::-webkit-outer-spin-button, .rpt-table td.in input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .rpt-table td.in input:disabled { color: var(--text); -webkit-text-fill-color: var(--text); opacity: 1; cursor: default; }
@@ -773,3 +773,28 @@ input[type="password"]::-webkit-credentials-auto-fill-button { visibility: hidde
 .sig-wrap.is-locked { border-style: solid; border-color: var(--border-strong); }
 .sig-wrap.is-locked .sig-canvas { cursor: not-allowed; }
 .sig-wrap:not(.is-locked) { border-color: var(--green); }
+
+/* HCI drop-down button for days without entries */
+.rpt-table td.c-note { padding: 0; }
+.hci-pick { width: 100%; min-height: 1.5rem; border: 0; background: transparent; color: var(--text); font: inherit; font-weight: 400; cursor: default; padding: .22rem .3rem; text-align: left; }
+.hci-pick:not(:disabled) { cursor: pointer; background: color-mix(in srgb, var(--primary) 10%, var(--surface)); }
+.hci-pick:not(:disabled):hover { background: var(--primary-soft); }
+.hci-pick:disabled { color: var(--text); -webkit-text-fill-color: var(--text); opacity: 1; }
+
+/* space between the daily table and the HCI grand total table */
+.modal-report .rpt-wrap + .rpt-wrap { margin-top: 1.25rem; }
+
+/* HCI column: hospital text and manual choice start at the same spot */
+.rpt-table td.c-hci { text-align: left !important; padding: .22rem .3rem .22rem .6rem !important; }
+.rpt-table td.c-hci.c-note { padding: 0 !important; }
+.rpt-table td.c-hci.c-note .hci-pick { font-weight: 400 !important; }
+.rpt-table td.c-hci.c-note .hci-pick {
+  -webkit-appearance: none; appearance: none; display: block; box-sizing: border-box;
+  width: 100%; margin: 0; border: 0; border-radius: 0;
+  padding: .22rem .3rem .22rem .6rem; text-align: left; text-indent: 0; letter-spacing: normal;
+}
+
+/* row with a manual HCI choice */
+.rpt-table tr.rpt-off td { background: #808080 !important; color: #000 !important; }
+.rpt-table tr.rpt-off td.z { color: #000 !important; }
+.rpt-table tr.rpt-off .hci-pick { background: transparent !important; color: #000 !important; }

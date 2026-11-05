@@ -22,7 +22,7 @@
   function blank() { return { at: Object.fromEntries(CATS.map(c => [c, 0])), ward: Object.fromEntries(CATS.map(c => [c, 0])), atA: 0, atI: 0, wdA: 0, wdI: 0 }; }
 
   function build(entries, ym, hospitals) {
-    const hName = (id, fallback) => { const h = hospitals.find(x => x.id === id); return h ? h.name : (fallback || 'Unknown'); };
+    const hName = (id, fallback) => { const h = hospitals.find(x => x.id === id); return String(h ? h.name : (fallback || 'Unknown')).toUpperCase(); };
     const last = 31;   // always list days 1 to 31; days the month does not have stay at 0
     const rows = [];
     for (let d = 1; d <= last; d++) {
@@ -82,7 +82,10 @@
   function dayRowsHtml(rows, man) {
     return rows.map((r, i) => {
       const dayCell = `<td class="c-day">${r.day}</td>`;
-      if (!r.d) return `<tr class="rpt-empty">${dayCell}<td class="c-hci"></td>${'<td class="z">0</td>'.repeat(29)}</tr>`;
+      if (!r.d) {
+        const note = (man['d|' + r.date] || {}).note || '';
+        return `<tr class="rpt-empty${note ? ' rpt-off' : ''}">${dayCell}<td class="c-hci c-note"><button type="button" class="hci-pick" data-note="${esc(r.date)}" aria-label="HCI status day ${r.day}">${esc(note)}</button></td>${'<td class="z">0</td>'.repeat(29)}</tr>`;
+      }
       const v = cells(r, man), m = man[r.key] || {};
       const body = v.slice(0, 26).map((x, k) => `<td class="${TOTAL_IDX.includes(k) ? 'tot' : ''}${x ? '' : ' z'}">${x}</td>`).join('');
       const inp = MANUAL.map(f => `<td class="in"><input type="number" min="0" inputmode="numeric" data-k="${esc(r.key)}" data-f="${f}" value="${m[f] ? esc(m[f]) : ''}" placeholder="0" aria-label="${f} day ${r.day}"></td>`).join('');
@@ -139,7 +142,7 @@
       <div class="table-wrap rpt-wrap"><table class="rpt-table" id="rptDaily">${head('Day')}<tbody>${dayRowsHtml(rows, man)}</tbody><tfoot id="rptFoot"></tfoot></table></div>
       <div class="table-wrap rpt-wrap" id="rptHci"></div>`;
 
-    const setEditing = (on) => { editing = on; $$('input[data-k]', body).forEach(i => { i.disabled = !on; }); };
+    const setEditing = (on) => { editing = on; $$('input[data-k]', body).forEach(i => { i.disabled = !on; }); $$('button[data-note]', body).forEach(i => { i.disabled = !on; }); };
     function refresh() {
       const t = totals(rows, man);
       $('#rptFoot', body).innerHTML = totRowHtml('GRAND TOTAL', t.grand);
@@ -154,6 +157,23 @@
       if (!v) delete man[i.dataset.k][i.dataset.f];
       if (!Object.keys(man[i.dataset.k]).length) delete man[i.dataset.k];
       refresh();
+    });
+
+    body.addEventListener('click', (ev) => {
+      const b = ev.target.closest('button[data-note]'); if (!b || !editing) return;
+      const key = 'd|' + b.dataset.note, cur = (man[key] || {}).note || '';
+      const opts = ['', 'LEAVE', 'OFF', 'CPO', 'OBS', 'HOLIDAY'];
+      const pm = UI.modal({
+        title: 'HCI', headIcon: 'list', size: 'sm', className: 'modal-picker',
+        body: `<ul class="pick-list" role="radiogroup">${opts.map((o, i) => `<li><label class="pick-item ${o === cur ? 'is-selected' : ''}"><input type="radio" name="hnote" value="${i}" ${o === cur ? 'checked' : ''}><span class="radio-dot" aria-hidden="true"></span><span class="pick-name">${o ? esc(o) : '(None)'}</span></label></li>`).join('')}</ul>`,
+        footer: [{ label: 'Cancel', className: 'btn-ghost' }]
+      });
+      $('.pick-list', pm.el).addEventListener('change', (e) => {
+        const v = opts[+e.target.value];
+        if (v) man[key] = { note: v }; else delete man[key];
+        b.textContent = v; b.closest('tr').classList.toggle('rpt-off', !!v);
+        setTimeout(() => pm.close(), 140);
+      });
     });
 
     UI.modal({
@@ -175,11 +195,11 @@
         { label: 'Close', className: 'btn-ghost' },
         { id: 'rptClear', label: 'Clear', className: 'btn-ghost', close: false, onClick: async () => {
           if (!editing) { UI.toast('Press Edit first.', 'info'); return false; }
-          if (!Object.keys(man).length) { UI.toast('There is nothing to clear.', 'info'); return false; }
+          if (!Object.keys(man).some(k => k.indexOf('d|') !== 0)) { UI.toast('There is nothing to clear.', 'info'); return false; }
           const go = await UI.confirm({ title: 'Clear typed values?', confirmText: 'Clear', danger: true, iconName: 'alert',
             message: '<p>This clears NO CO-PAY, No. of OPD Class Conducted and No. of CS During OPD Class for this month. Press Save afterwards to keep the change. The counts from your entries are not affected.</p>' });
           if (!go) return false;
-          Object.keys(man).forEach(k => delete man[k]);
+          Object.keys(man).forEach(k => { if (k.indexOf('d|') !== 0) delete man[k]; });
           $$('input[data-k]', body).forEach(i => { i.value = ''; });
           refresh(); UI.toast('Typed values cleared. Press Save to keep this.', 'success'); return false;
         } },
@@ -200,7 +220,7 @@
           UI.setBusy(b, true);
           try {
             const tt = totals(rows, man);
-            await ReportsXlsx.summary({ days: rows.map(r => ({ day: r.day, hci: r.hci, v: r.d ? cells(r, man) : null })), hcis: tt.hcis, grand: tt.grand, cats: CATS, info, ym, logo: C.LOGO_CARES });
+            await ReportsXlsx.summary({ days: rows.map(r => ({ day: r.day, hci: r.d ? r.hci : ((man['d|' + r.date] || {}).note || ''), v: r.d ? cells(r, man) : null })), hcis: tt.hcis, grand: tt.grand, cats: CATS, info, ym, logo: C.LOGO_CARES });
             UI.toast('Excel file downloaded.', 'success');
           } catch (e) { UI.toast(e.message || 'Could not create the Excel file.', 'error', 5000); }
           UI.setBusy(b, false); return false;
@@ -277,11 +297,12 @@
       });
       return y3;
     }
-    function dataRow(first, hci, vals, y) {
+    function dataRow(first, hci, vals, y, off) {
+      if (off) page.drawRectangle({ x: L0, y: Yt(y + RH), width: X[31] - L0, height: RH, color: rgb(.5, .5, .5) });
       grid(0, 30, y, y + RH); hline(L0, X[31], y + RH, THIN);
       cell(first, 0, 0, y, y + RH, { size: 6, left: true, pad: 3 });
-      cell(hci, 1, 1, y, y + RH, { size: 6, left: true, pad: 3, nowrap: true });
-      vals.forEach((v, i) => cell(String(v || 0), 2 + i, 2 + i, y, y + RH, { size: 6, gray: !v }));
+      cell(hci, 1, 1, y, y + RH, { size: 6, left: true, pad: 8, nowrap: true });
+      vals.forEach((v, i) => cell(String(v || 0), 2 + i, 2 + i, y, y + RH, { size: 6, gray: !v && !off }));
     }
     function totalRow(arr, y) {
       vline(X[0], y, y + RH, THIN); for (let c = 2; c <= 31; c++) vline(X[c], y, y + RH, THIN);
@@ -306,7 +327,7 @@
     let hEnd = header(y, 'Day'); y = hEnd;
     rows.forEach(r => {
       if (y + 2 * RH > PH - 24) { box(L0, yBoxTop, X[31], y, THICK); page = doc.addPage([PW, PH]); yBoxTop = 24; y = header(yBoxTop, 'Day'); }
-      if (!r.d) dataRow(String(r.day), '', new Array(29).fill(0), y);
+      if (!r.d) dataRow(String(r.day), (man['d|' + r.date] || {}).note || '', new Array(29).fill(0), y, !!(man['d|' + r.date] || {}).note);
       else dataRow(String(r.day), r.hci, cells(r, man), y);
       y += RH;
     });
@@ -350,7 +371,7 @@
   function buildInq(entries, ym, hospitals, cols) {
     const idx = new Map(cols.map((c, i) => [norm(c), i]));
     entries = entries.filter(e => idx.has(norm(e.nature_of_inquiry)));   // only inquiries still in the admin list
-    const hName = (id, fallback) => { const h = hospitals.find(x => x.id === id); return h ? h.name : (fallback || 'Unknown'); };
+    const hName = (id, fallback) => { const h = hospitals.find(x => x.id === id); return String(h ? h.name : (fallback || 'Unknown')).toUpperCase(); };
     const rows = [];
     for (let d = 1; d <= 31; d++) {
       const date = ym + '-' + String(d).padStart(2, '0');
@@ -363,7 +384,7 @@
         const g = groups.get(e.hospital_id || '');
         g.v[i]++; g.v[cols.length]++;
       });
-      if (!groups.size) rows.push({ day: d, hid: '', hci: '', v: null });
+      if (!groups.size) rows.push({ day: d, date, hid: '', hci: '', v: null });
       else [...groups.values()].sort((a, b) => a.hci.localeCompare(b.hci)).forEach(g => rows.push({ day: d, hid: g.hid, hci: g.hci, v: g.v }));
     }
     return rows;
@@ -385,10 +406,12 @@
   }
   const valCells = (v, n) => v.map((x, k) => `<td class="${k === n - 1 ? 'tot' : ''}${x ? '' : ' z'}">${x}</td>`).join('');
 
-  function inqDailyHtml(rows, n) {
-    return rows.map(r => r.v
-      ? `<tr><td class="c-day">${r.day}</td><td class="c-hci">${esc(r.hci)}</td>${valCells(r.v, n)}</tr>`
-      : `<tr class="rpt-empty"><td class="c-day">${r.day}</td><td class="c-hci"></td>${'<td class="z">0</td>'.repeat(n)}</tr>`).join('');
+  function inqDailyHtml(rows, n, man) {
+    return rows.map(r => {
+      if (r.v) return `<tr><td class="c-day">${r.day}</td><td class="c-hci">${esc(r.hci)}</td>${valCells(r.v, n)}</tr>`;
+      const note = (man['d|' + r.date] || {}).note || '';
+      return `<tr class="rpt-empty"><td class="c-day">${r.day}</td><td class="c-hci c-note"><button type="button" class="hci-pick" data-note="${esc(r.date)}" disabled aria-label="HCI status day ${r.day}">${esc(note)}</button></td>${'<td class="z">0</td>'.repeat(n)}</tr>`;
+    }).join('');
   }
   function inqHciHtml(t, cols) {
     const n = cols.length + 1;
@@ -405,30 +428,60 @@
     const known = new Set(cols.map(norm));
     const n = cols.length + 1;
     const rows = buildInq(entries, ym, hospitals, cols), t = totalsInq(rows, n), info = monthInfo(ym, ctx.profile);
+    let saved, editing = false;
+    try { saved = await loadManual(ym); } catch (e) { UI.toast(e.message || 'Could not open the report.', 'error', 5000); return; }
+    const man = JSON.parse(JSON.stringify(saved));
 const skipped = entries.filter(e => e.nature_of_inquiry && !known.has(norm(e.nature_of_inquiry))).length;
 if (skipped) UI.toast(skipped + ' entr' + (skipped === 1 ? 'y uses' : 'ies use') + ' an inquiry that is no longer in the Admin list, so ' + (skipped === 1 ? 'it is' : 'they are') + ' not counted in this report.', 'warn', 9000);
 
     const body = document.createElement('div');
     body.innerHTML = `
       <div class="rpt-meta"><div><span>Name of P-CARES</span><b>${esc(info.name)}</b></div><div><span>Month</span><b>${esc(info.month)}</b></div><div><span>Date/s Covered</span><b>${esc(info.covered)}</b></div></div>
-      <div class="table-wrap rpt-wrap rpt-fill"><table class="rpt-table">${headInq('Day', cols)}<tbody>${inqDailyHtml(rows, n)}</tbody><tfoot>${totRowHtml('GRAND TOTAL', t.grand)}</tfoot></table></div>
+      <div class="table-wrap rpt-wrap rpt-fill"><table class="rpt-table">${headInq('Day', cols)}<tbody>${inqDailyHtml(rows, n, man)}</tbody><tfoot>${totRowHtml('GRAND TOTAL', t.grand)}</tfoot></table></div>
       <div class="table-wrap rpt-wrap rpt-fill">${inqHciHtml(t, cols)}</div>`;
+
+    body.addEventListener('click', (ev) => {
+      const b = ev.target.closest('button[data-note]'); if (!b || !editing) return;
+      const key = 'd|' + b.dataset.note, cur = (man[key] || {}).note || '';
+      const opts = ['', 'LEAVE', 'OFF', 'CPO', 'OBS', 'HOLIDAY'];
+      const pm = UI.modal({
+        title: 'HCI', headIcon: 'list', size: 'sm', className: 'modal-picker',
+        body: `<ul class="pick-list" role="radiogroup">${opts.map((o, i) => `<li><label class="pick-item ${o === cur ? 'is-selected' : ''}"><input type="radio" name="hnote" value="${i}" ${o === cur ? 'checked' : ''}><span class="radio-dot" aria-hidden="true"></span><span class="pick-name">${o ? esc(o) : '(None)'}</span></label></li>`).join('')}</ul>`,
+        footer: [{ label: 'Cancel', className: 'btn-ghost' }]
+      });
+      $('.pick-list', pm.el).addEventListener('change', (e) => {
+        const v = opts[+e.target.value];
+        if (v) man[key] = { note: v }; else delete man[key];
+        b.textContent = v; b.closest('tr').classList.toggle('rpt-off', !!v);
+        setTimeout(() => pm.close(), 140);
+      });
+    });
 
     UI.modal({
       title: 'Nature of Inquiry', headIcon: 'file', size: 'xl', className: 'modal-report', body,
       footer: [
         { label: 'Close', className: 'btn-ghost' },
+        { id: 'rptEdit', label: 'Edit', className: 'btn-ghost', close: false, onClick: async (h, b) => {
+          if (!editing) {
+            editing = true; $$('button[data-note]', body).forEach(i => { i.disabled = false; });
+            b.textContent = 'Save'; b.className = 'btn btn-primary'; return false;
+          }
+          try { await saveManual(ym, man); } catch (err) { UI.toast(err.message || 'Could not save.', 'error', 5000); return false; }
+          editing = false; $$('button[data-note]', body).forEach(i => { i.disabled = true; });
+          b.textContent = 'Edit'; b.className = 'btn btn-ghost';
+          UI.toast('Changes saved.', 'success'); return false;
+        } },
         { id: 'rptXls', label: 'Export Excel', className: 'btn-ghost', close: false, onClick: async (h, b) => {
           if (!window.ExcelJS) { UI.toast('The Excel library did not load. Check your internet connection and try again.', 'error', 5000); return false; }
           UI.setBusy(b, true);
-          try { await ReportsXlsx.inquiry({ days: rows, hcis: t.hcis, grand: t.grand, cols, info, ym, logo: C.LOGO_CARES }); UI.toast('Excel file downloaded.', 'success'); }
+          try { if (editing) throw new Error('Press Save first, then export.'); await ReportsXlsx.inquiry({ days: rows.map(r => ({ ...r, hci: r.v ? r.hci : ((man['d|' + r.date] || {}).note || '') })), hcis: t.hcis, grand: t.grand, cols, info, ym, logo: C.LOGO_CARES }); UI.toast('Excel file downloaded.', 'success'); }
           catch (e) { UI.toast(e.message || 'Could not create the Excel file.', 'error', 5000); }
           UI.setBusy(b, false); return false;
         } },
         { id: 'rptPdf', label: 'Export PDF', className: 'btn-primary', close: false, onClick: async (h, b) => {
           if (!window.PDFLib) { UI.toast('The PDF library did not load. Check your internet connection and try again.', 'error', 5000); return false; }
           UI.setBusy(b, true);
-          try { await exportInqPdf(rows, cols, info, ym, t); UI.toast('PDF downloaded.', 'success'); }
+          try { if (editing) throw new Error('Press Save first, then export.'); await exportInqPdf(rows, cols, info, ym, t, man); UI.toast('PDF downloaded.', 'success'); }
           catch (e) { UI.toast(e.message || 'Could not create the PDF.', 'error', 5000); }
           UI.setBusy(b, false); return false;
         } }
@@ -436,7 +489,7 @@ if (skipped) UI.toast(skipped + ' entr' + (skipped === 1 ? 'y uses' : 'ies use')
     });
   }
 
-  async function exportInqPdf(rows, cols, info, ym, t) {
+  async function exportInqPdf(rows, cols, info, ym, t, man) {
     const { PDFDocument, StandardFonts, rgb } = PDFLib;
     const doc = await PDFDocument.create();
     const fb = await doc.embedFont(StandardFonts.TimesRomanBold);
@@ -505,11 +558,12 @@ if (skipped) UI.toast(skipped + ' entr' + (skipped === 1 ? 'y uses' : 'ies use')
       cell('TOTAL', LASTC, LASTC, y, y1, { size: 6.4, nowrap: true });
       return y1;
     }
-    function dataRow(first, hci, vals, y) {
+    function dataRow(first, hci, vals, y, off) {
+      if (off) page.drawRectangle({ x: L0, y: Yt(y + RH), width: X[LASTC + 1] - L0, height: RH, color: rgb(.5, .5, .5) });
       grid(y, y + RH); hline(L0, X[LASTC + 1], y + RH, THIN);
       cell(first, 0, 0, y, y + RH, { size: 6, left: true, pad: 3 });
-      cell(hci, 1, 1, y, y + RH, { size: 6, left: true, pad: 3, nowrap: true });
-      vals.forEach((v, i) => cell(String(v || 0), 2 + i, 2 + i, y, y + RH, { size: 6, gray: !v }));
+      cell(hci, 1, 1, y, y + RH, { size: 6, left: true, pad: 8, nowrap: true });
+      vals.forEach((v, i) => cell(String(v || 0), 2 + i, 2 + i, y, y + RH, { size: 6, gray: !v && !off }));
     }
     function totalRow(arr, y) {
       vline(X[0], y, y + RH, THIN); for (let c = 2; c <= LASTC + 1; c++) vline(X[c], y, y + RH, THIN);
@@ -533,7 +587,7 @@ if (skipped) UI.toast(skipped + ' entr' + (skipped === 1 ? 'y uses' : 'ies use')
     box(L0, top, X[LASTC + 1], boxBottom, THICK);
     y = header(y, 'Day');
     rows.forEach(r => {
-      if (!r.v) dataRow(String(r.day), '', new Array(n).fill(0), y);
+      if (!r.v) dataRow(String(r.day), (man['d|' + r.date] || {}).note || '', new Array(n).fill(0), y, !!(man['d|' + r.date] || {}).note);
       else dataRow(String(r.day), r.hci, r.v, y);
       y += RH;
     });

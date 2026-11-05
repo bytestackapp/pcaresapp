@@ -21,6 +21,7 @@
       const cell = ws.getCell(r, c);
       cell.font = { name: FONT, bold: true, size: o.size || 6, color: { argb: o.gray ? GRAY : BLACK } };
       cell.alignment = { horizontal: o.left ? 'left' : 'center', vertical: 'middle', wrapText: wrap, textRotation: rot, shrinkToFit: !wrap && !rot && o.shrink !== false, indent: o.indent || 0 };
+      if (o.fill) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF808080' } };
     }
     ws.getCell(r1, c1).value = value;
     if (r2 > r1 || c2 > c1) mergeRange(ws, r1, c1, r2, c2);
@@ -70,10 +71,11 @@
     return 4;
   }
 
-  function dataRow(ws, r, first, hci, vals, c0) {
-    put(ws, r, 1, r, 1, first, { left: true });
-    put(ws, r, 2, r, 2, hci, { left: true, indent: 1 });
-    vals.forEach((v, i) => put(ws, r, c0 + i, r, c0 + i, v || 0, { gray: !v }));
+  function dataRow(ws, r, first, hci, vals, c0, off) {
+    const f = off ? { fill: true } : {};
+    put(ws, r, 1, r, 1, first, { left: true, ...f });
+    put(ws, r, 2, r, 2, hci, { left: true, indent: 2, ...f });
+    vals.forEach((v, i) => put(ws, r, c0 + i, r, c0 + i, v || 0, { gray: !v && !off, ...f }));
     ws.getRow(r).height = RH;
   }
   function totalRow(ws, r, arr, c0) {
@@ -116,7 +118,7 @@
     let r = topBlock(ws, w, 'SUMMARY ( INPATIENT )', o.info);
     const t1 = r;
     r = headSummary(ws, r, 'Day', o.cats);
-    o.days.forEach(d => { dataRow(ws, r, d.day, d.v ? d.hci : '', d.v || zeros, 3); r++; });
+    o.days.forEach(d => { dataRow(ws, r, d.day, d.hci, d.v || zeros, 3, !d.v && !!d.hci); r++; });
     totalRow(ws, r, o.grand, 3); outline(ws, t1, 1, r, 31, true); r++;
     ws.getRow(r).height = 15; r++;
     const t2 = r;
@@ -150,7 +152,7 @@
     let r = topBlock(ws, w, 'NATURE OF INQUIRY', o.info);
     const t1 = r;
     r = headInq(ws, r, 'Day', o.cols);
-    o.days.forEach(d => { dataRow(ws, r, d.day, d.v ? d.hci : '', d.v || zeros, 3); r++; });
+    o.days.forEach(d => { dataRow(ws, r, d.day, d.hci, d.v || zeros, 3, !d.v && !!d.hci); r++; });
     totalRow(ws, r, o.grand, 3); outline(ws, t1, 1, r, last, true); r++;
     ws.getRow(r).height = 15; r++;
     const t2 = r;
