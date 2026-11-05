@@ -15,7 +15,7 @@ window.APP_CONFIG = {
   TIMEZONE: 'Asia/Manila',
   ROWS_PER_PAGE: 15,          // rows per printed sheet (matches the paper form)
   SPLASH_MS: 5000,            // minimum time the splash screen stays visible
-  APP_VERSION: '1.1.0',
+  APP_VERSION: '1.1.1',
   OVERRIDE_TIMEOUT_MIN: 30,   // default; admins can change it in Admin → Settings
 
   PATHS: {
