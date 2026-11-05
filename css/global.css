@@ -767,3 +767,9 @@ input[type="password"]::-webkit-credentials-auto-fill-button { visibility: hidde
 .month-actions { grid-template-columns: 1fr 1fr; margin-top: .25rem; }
 .month-actions .btn { width: 100%; }
 .month-card.is-current .month-status { color: var(--primary); font-weight: 500; }
+
+
+/* signature box: saved (locked) = grey, editing = green */
+.sig-wrap.is-locked { border-style: solid; border-color: var(--border-strong); }
+.sig-wrap.is-locked .sig-canvas { cursor: not-allowed; }
+.sig-wrap:not(.is-locked) { border-color: var(--green); }

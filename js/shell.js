@@ -91,6 +91,10 @@
     document.addEventListener('click', (e) => { if (!pop.hidden && !pop.contains(e.target) && e.target !== bell) closeBell(); });
     pop.addEventListener('click', async (e) => {
       const item = e.target.closest('[data-nid]');
+      if (e.target.closest('#clearAll')) {
+        try { await API.notifications.clearAll(ctx.user.id); } catch (err) { UI.toast(err.message, 'error', 5000); }
+        await loadNotifs(); drawBell(); return;
+      }
       if (e.target.closest('#markAll')) { await API.notifications.markAllRead(ctx.user.id); await loadNotifs(); drawBell(); return; }
       if (item) {
         await API.notifications.markRead(item.dataset.nid);
@@ -111,7 +115,7 @@
   function drawBell() {
     const pop = $('#bellPop');
     const unread = notifs.filter(x => !x.is_read).length;
-    pop.innerHTML = `<div class="pop-head"><strong>Notifications</strong>${unread ? '<button class="link-btn" id="markAll">Mark all as read</button>' : ''}</div>
+    pop.innerHTML = `<div class="pop-head"><strong>Notifications</strong><span class="row" style="gap:.9rem">${unread ? '<button class="link-btn" id="markAll">Mark all as read</button>' : ''}${notifs.length ? '<button class="link-btn" id="clearAll">Clear all</button>' : ''}</span></div>
       <div class="notif-list">${notifs.length ? notifs.map(n => `
         <button class="notif-item ${n.is_read ? '' : 'unread'}" data-nid="${n.id}" data-link="${esc(n.link || '')}">
           <span class="notif-ico notif-${esc(n.type)}">${icon(n.type === 'signup' ? 'userCheck' : n.type === 'account' ? 'check' : 'bell', 16)}</span>

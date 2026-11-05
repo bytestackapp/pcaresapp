@@ -77,7 +77,10 @@
     });
 
     $('#fsBackup').addEventListener('click', async (e) => {
-      const b = e.currentTarget; setBusy(b, true, 'Backing up');
+      const b = e.currentTarget;
+      const go = await UI.confirm({ title: 'Back up now?', confirmText: 'Back up now', iconName: 'download', message: '<p>A copy of all your entries, signatures and typed report numbers will be saved in the backup folder (C:\\Temp\\PCares\\backup).</p>' });
+      if (!go) return;
+      setBusy(b, true, 'Backing up');
       try { const name = await API.files.backupNow(); UI.toast('Backup saved: ' + name, 'success', 6000); }
       catch (err) { UI.toast(err.message, 'error', 6000); }
       finally { setBusy(b, false); }

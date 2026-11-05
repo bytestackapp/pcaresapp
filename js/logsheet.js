@@ -218,6 +218,8 @@
               <div class="row" style="justify-content:flex-end">
                 <button type="button" class="btn btn-ghost btn-sm" id="sigPaste">Paste from clipboard</button>
                 <button type="button" class="btn btn-ghost btn-sm" id="sigClear">Clear</button>
+                <button type="button" class="btn btn-ghost btn-sm" id="sigCopy">Copy</button>
+                <button type="button" class="btn btn-primary btn-sm" id="sigEdit">Save</button>
               </div></div>
           </div>
         </div>
@@ -268,16 +270,47 @@
     cv._get = () => st.ink ? cv.toDataURL('image/png') : null;
     cv._clear();
     if (existing) { const img = new Image(); img.onload = () => { g.drawImage(img, 0, 0, cv.width, cv.height); st.ink = true; }; img.src = existing; }
+    cv._setLock = (on) => {
+      st.locked = on;
+      $('#sigPaste', el).disabled = on; $('#sigClear', el).disabled = on;
+      wrap.classList.toggle('is-locked', on);
+      const eb = $('#sigEdit', el); eb.textContent = on ? 'Edit' : 'Save'; eb.className = 'btn btn-sm ' + (on ? 'btn-ghost' : 'btn-primary');
+    };
+    cv._setLock(!!existing);
     if (cv._bound) return; cv._bound = true;
     g.lineWidth = 3; g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = '#000';
     const pt = (ev) => { const r = cv.getBoundingClientRect(); return [(ev.clientX - r.left) * cv.width / r.width, (ev.clientY - r.top) * cv.height / r.height]; };
-    cv.addEventListener('pointerdown', (ev) => { ev.preventDefault(); wrap.focus({ preventScroll: true }); cv.setPointerCapture(ev.pointerId); st.drawing = true; const [x, y] = pt(ev); g.beginPath(); g.moveTo(x, y); g.lineTo(x + .01, y + .01); g.stroke(); st.ink = true; });
+    cv.addEventListener('pointerdown', (ev) => { ev.preventDefault(); if (st.locked) return; wrap.focus({ preventScroll: true }); cv.setPointerCapture(ev.pointerId); st.drawing = true; const [x, y] = pt(ev); g.beginPath(); g.moveTo(x, y); g.lineTo(x + .01, y + .01); g.stroke(); st.ink = true; });
     cv.addEventListener('pointermove', (ev) => { if (!st.drawing) return; ev.preventDefault(); const [x, y] = pt(ev); g.lineTo(x, y); g.stroke(); g.beginPath(); g.moveTo(x, y); });
     ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(n => cv.addEventListener(n, () => { st.drawing = false; }));
-    $('#sigClear', el).addEventListener('click', () => cv._clear());
+    $('#sigClear', el).addEventListener('click', () => { if (!st.locked) cv._clear(); });
+
+    $('#sigCopy', el).addEventListener('click', async () => {
+      if (!cv._get()) { UI.toast('There is no signature to copy.', 'error'); return; }
+      try {
+        if (!navigator.clipboard || !window.ClipboardItem) throw new Error('nosupport');
+        const flat = document.createElement('canvas'); flat.width = cv.width; flat.height = cv.height;
+        const fg = flat.getContext('2d'); fg.fillStyle = '#ffffff'; fg.fillRect(0, 0, flat.width, flat.height); fg.drawImage(cv, 0, 0);
+        const blob = await new Promise(r => flat.toBlob(r, 'image/png'));
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        UI.toast('Signature copied. You can now paste it into the PDF.', 'success', 4000);
+      } catch (err) { UI.toast('Could not copy the signature. Use Google Chrome or Microsoft Edge and try again.', 'error', 6000); }
+    });
+
+    $('#sigEdit', el).addEventListener('click', async () => {
+      if (st.locked) {
+        const go = await UI.confirm({ title: 'Edit the signature?', confirmText: 'Yes, edit', iconName: 'edit', message: '<p>Are you sure you want to change this signature? Clear and Paste are turned on until you click Save.</p>' });
+        if (go) cv._setLock(false);
+      } else {
+        if (!cv._get()) { UI.toast('There is no signature to save. Sign or paste one first.', 'error'); return; }
+        cv._setLock(true);
+        UI.toast('Signature saved. Click Save entry to keep the entry.', 'success', 4000);
+      }
+    });
 
     // paste with the button
     $('#sigPaste', el).addEventListener('click', async () => {
+      if (st.locked) return;
       try {
         if (!navigator.clipboard || !navigator.clipboard.read) throw Object.assign(new Error('nosupport'), { name: 'NotSupportedError' });
         const items = await navigator.clipboard.read();
@@ -292,6 +325,7 @@
     });
     // paste with Ctrl+V while the signature box is selected
     wrap.addEventListener('paste', async (ev) => {
+      if (st.locked) return;
       const items = (ev.clipboardData && ev.clipboardData.items) || [];
       for (const it of items) {
         if (it.kind === 'file' && it.type.indexOf('image/') === 0) {

@@ -45,7 +45,7 @@
   const $ = (sel, root) => (root || document).querySelector(sel);
   const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
   const debounce = (fn, ms = 250) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
-  const initials = (name) => String(name || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
+  const initials = (name) => { const p = String(name || '').trim().split(/\s+/).filter(Boolean); if (!p.length) return '?'; return (p.length === 1 ? p[0][0] : p[0][0] + p[p.length - 1][0]).toUpperCase(); };
 
   function timeAgo(iso) {
     const s = Math.max(1, Math.round((Date.now() - new Date(iso).getTime()) / 1000));

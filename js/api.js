@@ -397,11 +397,13 @@
     /* ---------- notifications ---------- */
     notifications: {
       async list(userId) {
-        const { data, error } = await sb.from('notifications').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(25);
+        const cutoff = new Date(); cutoff.setMonth(cutoff.getMonth() - 1);
+        const { data, error } = await sb.from('notifications').select('*').eq('user_id', userId).gte('created_at', cutoff.toISOString()).order('created_at', { ascending: false }).limit(25);
         if (error) return []; return data;
       },
       async markAllRead(userId) { await sb.from('notifications').update({ is_read: true }).eq('user_id', userId).eq('is_read', false); },
-      async markRead(id) { await sb.from('notifications').update({ is_read: true }).eq('id', id); }
+      async markRead(id) { await sb.from('notifications').update({ is_read: true }).eq('id', id); },
+      async clearAll(userId) { const { error } = await sb.from('notifications').delete().eq('user_id', userId); fail(error); }
     },
 
     /* ---------- support messages (user to admin) ---------- */
