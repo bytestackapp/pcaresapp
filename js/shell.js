@@ -55,7 +55,15 @@
     document.body.prepend(app);
     $('.main-wrap', app).appendChild(main);
     const foot = document.createElement('footer'); foot.className = 'app-foot';
-    foot.innerHTML = `<strong class="foot-name">PCares App · Version ${esc(C.APP_VERSION || '1.0.0')}</strong><span>© ${new Date().getFullYear()} Bytestack. All Rights Reserved.</span>`; $('.main-wrap', app).appendChild(foot);
+    foot.innerHTML = `<div class="foot-left"><span>Copyright © ${new Date().getFullYear()} Bytestack. All rights reserved.</span><span class="foot-dot">·</span><span>v${esc(C.APP_VERSION || '1.0.0')}</span></div>
+      <ul class="foot-links">
+        <li><button type="button" data-foot="about">About</button></li>
+        <li><button type="button" data-foot="privacy">Privacy</button></li>
+        <li><a href="${C.PATHS.help}">Help</a></li>
+        <li><a href="${C.PATHS.profile}">Your data</a></li>
+      </ul>`;
+    $('.main-wrap', app).appendChild(foot);
+    foot.addEventListener('click', (e) => { const b = e.target.closest('[data-foot]'); if (b) (b.dataset.foot === 'about' ? UI.showAbout : UI.showPrivacy)(); });
   }
 
   function bindShell() {

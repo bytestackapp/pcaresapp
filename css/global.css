@@ -81,6 +81,7 @@ img { max-width: 100%; }
 .ico { width: 20px; height: 20px; flex: none; vertical-align: middle; }
 .muted { color: var(--text-2); }
 .small { font-size: .85rem; }
+.large { font-size: .9rem; }
 .nowrap { white-space: nowrap; }
 .center { text-align: center; }
 .spacer { flex: 1; }
@@ -133,8 +134,6 @@ img { max-width: 100%; }
 .topbar-actions { display: flex; align-items: center; gap: .25rem; }
 .menu-btn { display: none; }
 .content { flex: 1; width: 100%; max-width: 1320px; margin: 0 auto; padding: 1.5rem 1.5rem 2.5rem; }
-.app-foot { padding: 1rem 1.5rem; color: var(--text-3); font-size: .8rem; text-align: center; display: grid; gap: .15rem; }
-.app-foot .foot-name { color: var(--text-2); font-size: .85rem; font-weight: 600; }
 
 .icon-btn {
   position: relative; display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: var(--radius);
@@ -798,3 +797,38 @@ input[type="password"]::-webkit-credentials-auto-fill-button { visibility: hidde
 .rpt-table tr.rpt-off td { background: #808080 !important; color: #000 !important; }
 .rpt-table tr.rpt-off td.z { color: #000 !important; }
 .rpt-table tr.rpt-off .hci-pick { background: transparent !important; color: #000 !important; }
+
+/* Export PDF pop-up: table of numbers per date */
+.modal-export .modal-body { padding: 1rem 1.25rem; }
+.exp-wrap { border: 1px solid var(--border); border-radius: var(--radius); max-height: 55vh; overflow: auto; }
+.exp-table th { white-space: normal; text-align: center; vertical-align: bottom; line-height: 1.25; position: sticky; top: 0; z-index: 1; }
+.exp-table th:first-child, .exp-table td:first-child { text-align: left; }
+.exp-table td { padding: .5rem .6rem; }
+.exp-table td .input { text-align: center; min-height: 34px; min-width: 56px; width: 100%; padding: .35rem .4rem; }
+.exp-table th { font-size: .72rem; padding: .55rem .5rem; }
+.modal.modal-export { max-width: 620px; }
+.exp-table td:not(:first-child) { text-align: center; }
+
+/* footer */
+.app-foot { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .5rem 1.5rem; padding: 1.1rem 1.5rem; text-align: left; font-size: .85rem; color: var(--text-2); }
+.foot-left { display: flex; gap: .5rem; flex-wrap: wrap; }
+.foot-dot { color: var(--text-3); }
+.foot-links { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; }
+.foot-links li + li::before { content: '·'; margin: 0 .65rem; color: var(--text-3); }
+.foot-links a, .foot-links button { color: var(--text-2); text-decoration: none; background: none; border: 0; padding: 0; font: inherit; cursor: pointer; }
+.foot-links a:hover, .foot-links button:hover { color: var(--primary); }
+@media (max-width: 640px) { .app-foot { flex-direction: column; align-items: flex-start; padding: 1rem; } }
+
+/* Log sheet: fit the page in the screen, table scrolls inside its own box */
+@media (min-width: 900px) {
+  body[data-page="logsheet"] .main-wrap { height: 100vh; }
+  body[data-page="logsheet"] .content { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; padding-bottom: 1rem; }
+  body[data-page="logsheet"] .content > * { flex-shrink: 0; }
+  body[data-page="logsheet"] .content > .card:last-child { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+  body[data-page="logsheet"] #tableWrap { flex: 1 1 auto; max-height: none; min-height: 200px; }
+}
+
+/* footer lines up with the page content */
+.app-foot { width: 100%; max-width: 1320px; margin: 0 auto; padding: 1.1rem 1.5rem; }
+@media (max-width: 899px) { .app-foot { padding: 1rem; } }
+

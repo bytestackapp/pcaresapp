@@ -332,5 +332,37 @@
     el._flagT = setTimeout(() => el.classList.remove('input-error'), 1400);
   }
 
-  window.UI = { icon, esc, $, $$, debounce, initials, timeAgo, fmtTime, toast, modal, confirm, pickHospital, hospitalField, setBusy, showAlert, hideAlert, bindPasswordToggles, shake, pill, flagInput, datePicker };
+  /* About and Privacy wording: edit it here only. Used by the login page and the footer. */
+  function showAbout() {
+    const C = window.APP_CONFIG;
+    modal({ title: 'About', headIcon: 'info', size: 'sm', footer: [{ label: 'Close', className: 'btn-primary' }],
+      body: `<p><strong>${esc(C.APP_NAME)}</strong> replaces the manual P-CARES log sheet and daily report with a single digital platform.</p>
+        <p>Enter each client’s information once, and the app automatically calculates daily summaries, maintains monthly log sheets, and generates monthly reports, including Summary Inpatient and Nature of Inquiry. All reports can be exported to PDF in the familiar format, with a unique control number on every page.</p>
+        <p style="margin-top:20px;font-size:0.9rem"><strong>System Requirements</strong></p>
+        <ul style="margin-top:8px;padding-left:22px">
+          <li>Compatible with Google Chrome and Microsoft Edge.</li>
+          <li>Designed for laptop and desktop computers.</li>
+          <li>Current Version: ${esc(C.APP_VERSION || '1.0.0')}.</li>
+        </ul>` });
+  }
+
+  function showPrivacy() {
+    const C = window.APP_CONFIG;
+    modal({ title: 'Privacy', headIcon: 'lock', size: 'sm', footer: [{ label: 'Close', className: 'btn-primary' }],
+      body: `<p><strong>${esc(C.APP_NAME)}</strong> is designed to keep patient information stored locally on your computer.</p>
+        <p style="margin-top:20px;font-size:0.9rem"><strong>1. Local Data Storage</strong></p>
+        <p>Patient and member information entered into the app is stored only on your computer, in the C:\\Temp\\PCares folder. This includes signatures, report numbers, and backup files. These records are not uploaded to or stored on the online server.</p>
+        <p style="margin-top:20px;font-size:0.9rem"><strong>2. Online Account Information</strong></p>
+        <p>The online server stores account-related information only, including your name, username, email address, position, contact number, hospital, and messages sent to the administrator.</p>
+        <p>Do not include patient or other sensitive information in messages sent through Support.</p>
+        <p style="margin-top:20px;font-size:0.9rem"><strong>3. Data Backup and Security</strong></p>
+        <p>Backup files contain patient information and must be handled securely. Keep your backup folder protected and regularly copy it to another drive to prevent data loss.</p>
+        <p style="margin-top:20px;font-size:0.9rem"><strong>4. Account Protection</strong></p>
+        <p>For security, an account is automatically locked after three consecutive incorrect password attempts. Contact the administrator through Support to request an account unlock.</p>
+        <p style="margin-top:20px;font-size:0.9rem"><strong>5. Data Privacy Compliance</strong></p>
+        <p>Use the app in accordance with the Philippine Data Privacy Act of 2012 (Republic Act No. 10173) and your hospital's applicable data privacy and security policies.</p>
+        <p>Never share your login credentials with others.</p>` });
+  }
+
+  window.UI = { icon, esc, $, $$, debounce, initials, timeAgo, fmtTime, toast, modal, confirm, pickHospital, hospitalField, setBusy, showAlert, hideAlert, bindPasswordToggles, shake, pill, flagInput, datePicker, showAbout, showPrivacy };
 })();

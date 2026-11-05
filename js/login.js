@@ -90,17 +90,7 @@
       try { await API.support.sendFromLogin(u, s, m); UI.toast('Message sent. The admin will see it.', 'success', 5000); }
       catch (err) { UI.toast(err.message, 'error', 5000); setBusy(b, false); return false; }
     } }]
-  }));
 
-  /* info modals */
-  $('#aboutLink').addEventListener('click', () => UI.modal({ title: 'About', headIcon: 'info', size: 'sm', footer: [{ label: 'Close', className: 'btn-primary' }],
-    body: `<p><strong>${UI.esc(C.APP_NAME)}</strong> replaces the paper P-CARES log and the daily report with one digital log sheet.</p>
-      <p>Enter each client once. The app calculates the daily summary, keeps a monthly log sheet, prepares the monthly reports (Summary Inpatient and Nature of Inquiry), and exports everything to PDF in the familiar format, with a control number on each page.</p>
-      <p class="muted small">Works in Google Chrome or Microsoft Edge on a laptop or desktop computer. Version ${UI.esc(C.APP_VERSION || '1.0.0')}.</p>` }));
-  $('#privacyLink').addEventListener('click', () => UI.modal({ title: 'Privacy', headIcon: 'lock', size: 'sm', footer: [{ label: 'Close', className: 'btn-primary' }],
-    body: `<p>Patient and member details entered here are personal information. They are saved only on this laptop, in the <strong>C:\\Temp\\PCares</strong> folder, never on the internet. This includes signatures, the typed report numbers and the backups.</p>
-      <p>The online server keeps only account details: name, username, email, position, contact number, hospital, and the messages you send to the admin. Do not put patient details in a message.</p>
-      <p>Backups contain patient details. Keep the folder safe, and copy the backup folder to another drive from time to time.</p>
-      <p>For your protection, an account is locked after 3 wrong password attempts. The admin can unlock it once you send a message through Support.</p>
-      <p>Use this app in line with the Data Privacy Act of 2012 (RA 10173) and your hospital’s data policy. Do not share your login.</p>` }));
+  }));  $('#aboutLink').addEventListener('click', UI.showAbout);
+  $('#privacyLink').addEventListener('click', UI.showPrivacy);
 })();

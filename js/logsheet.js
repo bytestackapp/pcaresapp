@@ -522,16 +522,26 @@
   /* ============================== export ============================== */
     function openExportModal() {
     if (!state.view.length) { UI.toast('There are no entries to export.', 'error'); return; }
+    const m = new Map();
+    state.view.forEach(e => {
+      const key = e.hospital_id + '|' + e.entry_date;
+      if (!m.has(key)) m.set(key, { key, hospital: e.hospital_name || '', date: e.entry_date });
+    });
+    const gs = [...m.values()].sort((a, b) => a.hospital.localeCompare(b.hospital) || String(a.date).localeCompare(b.date));
+    const multiH = new Set(gs.map(g => g.hospital)).size > 1;
+    const inp = (g, f) => `<input class="input" data-g="${esc(g.key)}" data-f="${f}" type="number" min="0" inputmode="numeric" placeholder="0" aria-label="${f}">`;
+    const rowsHtml = gs.map(g => `<tr>
+        <td class="nowrap"><strong>${esc(L.fmtDate(g.date))}</strong></td>
+        ${multiH ? `<td>${esc(g.hospital)}</td>` : ''}
+        <td>${inp(g, 'n')}</td><td>${inp(g, 'c')}</td><td>${inp(g, 'p')}</td></tr>`).join('');
     UI.modal({
-      title: 'Export PDF', headIcon: 'download', size: 'sm',
+      title: 'Export PDF', headIcon: 'download', size: 'lg', className: 'modal-export',
       body: `<div id="expAlert" class="alert" hidden></div>
-        <p class="help">Each page gets its own control no. (year-month-series), starting at 01 every month.</p>
-        <div class="field"><label class="label" for="expOpdN">No. of times OPD class is conducted</label>
-          <input class="input" id="expOpdN" type="number" min="0" inputmode="numeric"></div>
-        <div class="field"><label class="label" for="expOpdC">No. of clients served during OPD class</label>
-          <input class="input" id="expOpdC" type="number" min="0" inputmode="numeric"></div>
-        <div class="field"><label class="label" for="expPpff">Total No. of PPFF Administered</label>
-          <input class="input" id="expPpff" type="number" min="0" inputmode="numeric"></div>`,
+        <p class="help" style="margin-bottom:.8rem">${gs.length} sheet${gs.length === 1 ? '' : 's'} will be exported. Leave a box empty if not needed.</p>
+        <div class="table-wrap exp-wrap"><table class="tbl exp-table"><thead><tr>
+          <th>Date entered</th>${multiH ? '<th>Hospital</th>' : ''}
+          <th>No. of times OPD class is conducted</th><th>No. of clients served during OPD class</th><th>Total No. of PPFF administered</th>
+        </tr></thead><tbody>${rowsHtml}</tbody></table></div>`,
       footer: [{ label: 'Cancel', className: 'btn-ghost' }, { id: 'expGo', label: 'Download PDF', className: 'btn-primary', onClick: (hh, b) => doExport(hh, b) }]
     });
   }
@@ -539,7 +549,8 @@
   async function doExport(h, btn) {
     const box = $('#expAlert', h.el); box.hidden = true;
     if (!window.PDFLib) { UI.showAlert(box, 'The PDF library did not load. Check your internet connection and try again.'); return false; }
-    const num = (id) => { const v = $(id, h.el).value.trim(); return v === '' ? null : Math.max(0, parseInt(v, 10) || 0); };
+    const val = (key, f) => { const el = h.el.querySelector(`[data-g="${key}"][data-f="${f}"]`); const v = el ? el.value.trim() : ''; return v === '' ? null : Math.max(0, parseInt(v, 10) || 0); };
+    const manualFor = (key) => ({ pcare_name: profile.full_name, opd_class_count: val(key, 'n'), opd_class_clients: val(key, 'c'), ppff_total: val(key, 'p') });
 
     const printed = state.view.filter(e => e.control_no);
     if (printed.length) {
@@ -551,10 +562,6 @@
       if (!go) return false;
     }
 
-    const manual = {
-      pcare_name: profile.full_name,
-      opd_class_count: num('#expOpdN'), opd_class_clients: num('#expOpdC'), ppff_total: num('#expPpff')
-    };
     setBusy(btn, true, 'Preparing');
     const marks = new Map();      // entry id -> control no.
     let controlList = [];
@@ -593,7 +600,7 @@
           controls.push(control);
           chunk.forEach(e => marks.set(e.id, control));
         }
-        return { date: entries[0].entry_date, dateTo: entries[entries.length - 1].entry_date, hospital: g.hospital, sheet: { ...manual, control_no: controls[0] }, controls, entries };
+        return { date: entries[0].entry_date, dateTo: entries[entries.length - 1].entry_date, hospital: g.hospital, sheet: { ...manualFor(g.hospital_id + '|' + g.date), control_no: controls[0] }, controls, entries };
       });
       controlList = [...new Set(days.flatMap(d => d.controls))].sort();
 
