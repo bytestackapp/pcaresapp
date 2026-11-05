@@ -561,10 +561,11 @@
     try {
       const byH = new Map();
       state.view.forEach(e => {
-        if (!byH.has(e.hospital_id)) byH.set(e.hospital_id, { hospital_id: e.hospital_id, hospital: e.hospital_name || '', entries: [] });
-        byH.get(e.hospital_id).entries.push(e);
+        const key = e.hospital_id + '|' + e.entry_date;
+        if (!byH.has(key)) byH.set(key, { hospital_id: e.hospital_id, hospital: e.hospital_name || '', date: e.entry_date, entries: [] });
+        byH.get(key).entries.push(e);
       });
-      const gs = [...byH.values()].sort((a, b) => a.hospital.localeCompare(b.hospital));
+      const gs = [...byH.values()].sort((a, b) => a.hospital.localeCompare(b.hospital) || String(a.date).localeCompare(b.date));
 
       // highest series already used per hospital and month (by entries that are not part of this export)
       const inView = new Set(state.view.map(e => e.id));
