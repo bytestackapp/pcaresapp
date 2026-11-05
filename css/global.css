@@ -746,3 +746,24 @@ input[type="password"]::-webkit-credentials-auto-fill-button { visibility: hidde
 .rpt-fill { width: 100%; }
 .rpt-fill .rpt-table { width: 100%; }
 .rpt-fill .rpt-table th.inq-h { width: auto; }
+
+
+/* Monthly Log Sheet: card layout */
+.month-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
+.month-card { padding: 1.1rem 1.25rem; gap: 1rem; }
+.month-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+.month-head { min-height: 0; gap: .2rem; }
+.month-head h3 { font-size: 1.2rem; font-weight: 600; letter-spacing: -.01em; }
+.month-total { text-align: right; flex: none; }
+.month-total b { display: block; font-size: 2.2rem; line-height: 1; font-weight: 600; letter-spacing: -.02em; color: var(--primary); font-variant-numeric: tabular-nums; }
+.month-total b.z { color: var(--text-3); }
+.month-total span { font-size: .8rem; color: var(--text-2); font-weight: 600; }
+.month-bars { display: grid; gap: .75rem; }
+.mbar { display: grid; grid-template-columns: 78px 1fr 34px; gap: .6rem; align-items: center; font-size: .9rem; font-weight: 600; }
+.mbar-track { height: 10px; border-radius: 99px; background: var(--surface-3); overflow: hidden; }
+.mbar-fill { height: 100%; border-radius: 99px; background: var(--primary); transition: width .6s var(--ease-slide); }
+.mbar em { font-style: normal; text-align: right; font-variant-numeric: tabular-nums; color: var(--text); }
+.mbar em.z { color: var(--text-3); font-weight: 500; }
+.month-actions { grid-template-columns: 1fr 1fr; margin-top: .25rem; }
+.month-actions .btn { width: 100%; }
+.month-card.is-current .month-status { color: var(--primary); font-weight: 500; }

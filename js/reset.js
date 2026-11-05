@@ -1,6 +1,5 @@
 (async function () {
   const { $, showAlert, hideAlert, setBusy } = UI;
-  $('#brandLogo').src = APP_CONFIG.LOGO;
   UI.bindPasswordToggles(document);
   const box = $('#resetAlert');
 
