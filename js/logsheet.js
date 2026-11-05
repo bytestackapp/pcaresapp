@@ -493,9 +493,9 @@
     const ok = await UI.confirm({
       title: 'Delete this entry?', danger: true, confirmText: 'Delete entry', iconName: 'trash',
       message: `<p>Below item will be removed.</p>
-        <p><strong>${esc(e.patient_name || e.client_name || 'This entry')}</strong></p>
-        <p style="margin-top:-2px">Hospital: ${esc(e.hospital_name || '')}</p>
-        <p style="margin-top:-2px">Date entered: ${esc(L.fmtDate(e.entry_date, 'long'))}</p>
+        <p style="margin-bottom:.12rem"><strong>${esc(e.patient_name || e.client_name || 'This entry')}</strong></p>
+        <p style="margin-bottom:.12rem">Hospital: ${esc(e.hospital_name || '')}</p>
+        <p>Date entered: ${esc(L.fmtDate(e.entry_date, 'long'))}</p>
         <p>This cannot be undone. Make sure you have a recent backup if you may need it again.</p>`
     });
     if (!ok) return;
