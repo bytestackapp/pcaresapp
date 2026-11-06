@@ -110,7 +110,7 @@
         if (link && /^\/(?![\/\\])/.test(link)) location.href = link; else drawBell();
       }
     });
-    setInterval(loadNotifs, 60000);
+    setInterval(() => { if (!document.hidden) loadNotifs(); }, 60000);
   }
 
   let notifs = [];
@@ -125,7 +125,7 @@
     const unread = notifs.filter(x => !x.is_read).length;
     pop.innerHTML = `<div class="pop-head"><strong>Notifications</strong><span class="row" style="gap:.9rem">${unread ? '<button class="link-btn" id="markAll">Mark all as read</button>' : ''}${notifs.length ? '<button class="link-btn" id="clearAll">Clear all</button>' : ''}</span></div>
       <div class="notif-list">${notifs.length ? notifs.map(n => `
-        <button class="notif-item ${n.is_read ? '' : 'unread'}" data-nid="${n.id}" data-link="${esc(n.link || '')}">
+        <button class="notif-item ${n.is_read ? '' : 'unread'}" data-nid="${esc(n.id)}" data-link="${esc(n.link || '')}">
           <span class="notif-ico notif-${esc(n.type)}">${icon(n.type === 'signup' ? 'userCheck' : n.type === 'account' ? 'check' : 'bell', 16)}</span>
           <span class="notif-text"><strong>${esc(n.title)}</strong>${n.body ? `<small>${esc(n.body)}</small>` : ''}<em>${UI.timeAgo(n.created_at)}</em></span>
         </button>`).join('') : `<div class="empty-mini">${icon('bell', 22)}<p>You’re all caught up.</p></div>`}</div>`;
@@ -146,6 +146,37 @@
     location.replace(C.PATHS.login + (reason ? '?reason=' + reason : ''));
     return new Promise(() => {});
   }
+  
+    /* ======================= Auto logout when idle ======================= */
+  function startIdleWatch() {
+    const MIN = Number(C.IDLE_LOGOUT_MIN) || 0;
+    if (!MIN) return;
+    const LIMIT = MIN * 60000, KEY = 'ls_last_active';
+    let warned = false, lastWrite = 0;
+    const read = () => { try { return Number(localStorage.getItem(KEY)) || Date.now(); } catch (e) { return Date.now(); } };
+    const idleNow = () => Date.now() - read();
+    const signOutIdle = async () => {
+      await API.signOut();
+      location.replace(C.PATHS.login + '?reason=idle');
+    };
+    if (idleNow() >= LIMIT) { signOutIdle(); return; }       // came back after a long absence
+    const touch = () => {
+      const now = Date.now();
+      if (now - lastWrite < 5000) return;
+      lastWrite = now; warned = false;
+      try { localStorage.setItem(KEY, String(now)); } catch (e) {}
+    };
+    ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click'].forEach(ev => document.addEventListener(ev, touch, { passive: true, capture: true }));
+    touch();
+    setInterval(() => {
+      const idle = idleNow();
+      if (idle >= LIMIT) signOutIdle();
+      else if (idle >= LIMIT - 60000 && !warned) {
+        warned = true;
+        UI.toast('You will be logged out in 1 minute because of inactivity. Move the mouse or press a key to stay signed in.', 'warn', 8000);
+      }
+    }, 15000);
+  }
 
   /* ======================= Init ======================= */
   async function init(opts = {}) {
@@ -164,7 +195,7 @@
       document.body.classList.add('ready');
       return new Promise(() => {});
     }
-    buildShell(); bindShell();
+    buildShell(); bindShell(); startIdleWatch();
     loadNotifs();
     if (ctx.isAdmin) {
       const { count } = await API.sb.from('profiles').select('id', { count: 'exact', head: true }).eq('status', 'pending');

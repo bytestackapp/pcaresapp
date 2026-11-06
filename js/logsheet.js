@@ -8,13 +8,7 @@
   const mb = () => L.monthBounds(L.activeMonth());                       // first and last day of the active month
   const maxDate = () => { const last = mb()[1], t = today(); return last < t ? last : t; };
   const PAGE = 50;
-  const INQUIRIES = (() => {
-    try {
-      const v = ctx.settings.inquiries, a = typeof v === 'string' ? JSON.parse(v) : v;
-      if (Array.isArray(a) && a.length) return a.filter(x => typeof x === 'string' && x.trim());
-    } catch (e) {}
-    return ['DOC REQUIREMENT', 'ADD DEPENDENT', 'PHIC ELIGIBILITY'];
-  })();
+  const INQUIRIES = L.inquiryList(ctx.settings);
   const state = { all: [], view: [], page: 1, search: '', loading: true, error: '', filter: { hospital: '', from: '', to: '' } };
   const sigCache = new Map();
 
@@ -32,8 +26,8 @@
     ${L.activeMonth() !== L.currentMonth() ? `<div class="mode-note">${icon('calendar', 18)}<span>You are viewing ${esc(L.monthLabel(L.activeMonth()))}, not the current month.</span><a class="btn btn-ghost btn-sm" href="${C.PATHS.monthly}">Go to Monthly Log Sheet</a></div>` : ''}
     <div class="card ls-toolbar">
       <div class="tb-field">
-        <label class="label" for="fHosp">Hospital</label>
-        <select class="input" id="fHosp"></select>
+        <label class="label" for="fHospFilter">Hospital</label>
+        <button type="button" class="select-btn" id="fHospFilter" aria-haspopup="dialog"><span class="sel-text">All hospitals</span><span id="fHospFilterChev"></span></button>
       </div>
       <div class="tb-field"><label class="label" for="fFrom">From</label><input type="date" class="input" id="fFrom"></div>
       <div class="tb-field"><label class="label" for="fTo">To</label><input type="date" class="input" id="fTo"></div>
@@ -94,8 +88,9 @@
   function renderFilter() {
     const f = state.filter, hs = hospitalsWithData();
     if (f.hospital && !hs.some(h => h.id === f.hospital)) f.hospital = '';
-    $('#fHosp').innerHTML = '<option value="">All hospitals</option>' + hs.map(h => `<option value="${esc(h.id)}" ${h.id === f.hospital ? 'selected' : ''}>${esc(h.name)}</option>`).join('');
-    $('#fFrom').value = f.from; $('#fTo').value = f.to;
+    const hb = $('#fHospFilter'), curH = hs.find(h => h.id === f.hospital);
+    $('.sel-text', hb).textContent = curH ? curH.name : 'All hospitals';
+    hb.classList.toggle('has-value', !!curH);    $('#fFrom').value = f.from; $('#fTo').value = f.to;
     $('#fFrom').min = mb()[0]; $('#fFrom').max = f.to || mb()[1]; $('#fTo').min = f.from || mb()[0]; $('#fTo').max = mb()[1];
     if ($('#fFrom')._sync) { $('#fFrom')._sync(); $('#fTo')._sync(); }
     $('#dateHint').hidden = !!f.from === !!f.to;
@@ -109,7 +104,7 @@
   const filterActive = () => state.filter.hospital || state.filter.from || state.filter.to || state.search.trim();
 
   function actionsCell(e, no) {
-    return `<td class="actions"><button class="icon-btn" data-act="copy" data-id="${e.id}" aria-label="Copy entry ${no}" title="Copy">${icon('copy', 18)}</button><button class="icon-btn" data-act="edit" data-id="${e.id}" aria-label="Edit entry ${no}" title="Edit">${icon('edit', 18)}</button><button class="icon-btn danger" data-act="del" data-id="${e.id}" aria-label="Delete entry ${no}" title="Delete">${icon('trash', 18)}</button></td>`;
+    return `<td class="actions"><button class="icon-btn" data-act="copy" data-id="${esc(e.id)}" aria-label="Copy entry ${no}" title="Copy">${icon('copy', 18)}</button><button class="icon-btn" data-act="edit" data-id="${esc(e.id)}" aria-label="Edit entry ${no}" title="Edit">${icon('edit', 18)}</button><button class="icon-btn danger" data-act="del" data-id="${esc(e.id)}" aria-label="Delete entry ${no}" title="Delete">${icon('trash', 18)}</button></td>`;
   }
   const noCell = (no) => `<td class="no" data-label="No.">${no}</td>`;
   const dateCell = (e) => td('Date entered', esc(L.fmtDate(e.entry_date)), 'nowrap', e.entry_date);
@@ -140,7 +135,7 @@
       ${td('PhilHealth member', esc(e.member_name), '', e.member_name)}
       ${td('Client', esc(e.client_name), '', e.client_name)}
       ${td('Contact', esc(e.contact_no), 'nowrap', e.contact_no)}
-      ${td('Signature', e.has_signature ? (sigCache.get(e.id) ? `<img class="sig-thumb" src="${sigCache.get(e.id)}" alt="Client signature">` : `<span data-sig="${e.id}" class="muted small">…</span>`) : '', '', e.has_signature ? 'y' : '')}
+      ${td('Signature', e.has_signature ? (sigCache.get(e.id) ? `<img class="sig-thumb" src="${sigCache.get(e.id)}" alt="Client signature">` : `<span data-sig="${esc(e.id)}" class="muted small">…</span>`) : '', '', e.has_signature ? 'y' : '')}
       ${td('Patient is', e.patient_is === 'member' ? '<span class="badge">Member</span>' : e.patient_is === 'dependent' ? '<span class="badge">Dependent</span>' : '', '', e.patient_is)}
       ${td('Admission date', e.admission_date ? esc(e.admission_date.slice(5, 7) + '/' + e.admission_date.slice(8, 10) + '/' + e.admission_date.slice(0, 4)) : '', 'nowrap', e.admission_date)}
       ${td('Category', e.member_category ? catBadge(e.member_category) : '', '', e.member_category)}
@@ -239,7 +234,7 @@
               <select class="input" id="fPcf1"><option value="">Not issued</option>${L.PCF1_REASONS.map(r => `<option value="${r.key}" ${e.pcf1_reason === r.key ? 'selected' : ''}>${esc(r.label)}</option>`).join('')}</select></div>
 
             <div class="field"><label class="switch"><input type="checkbox" id="fWalk" ${chk(e.walk_in)}><span class="switch-ui"></span><span>Walk-in client</span></label></div>
-            <div class="field"><label class="switch"><input type="checkbox" id="fPpff" ${chk(e.ppff)}><span class="switch-ui"></span><span>PPFF administered</span></label></div>
+            <div class="field"><label class="switch"><input type="checkbox" id="fPpff" ${chk(e.ppff)}><span class="switch-ui"></span><span>PPFF</span></label></div>
 
             <div class="field span-2"><label class="label" for="fRemarks">Remarks</label>
               <input class="input caps" id="fRemarks" value="${esc(e.remarks || '')}" autocapitalize="characters" spellcheck="false"></div>
@@ -405,18 +400,23 @@
         if (u !== inp.value) { inp.value = u; try { inp.setSelectionRange(a, b); } catch (x) {} }
       }));
     }
-    let touchedPatient = !!e.patient_name;
-    q('#fPatient').addEventListener('input', () => { touchedPatient = true; });
-    const copyMember = () => { if (!touchedPatient && q('#fPi').value === 'member') q('#fPatient').value = q('#fMember').value; };
-    q('#fMember').addEventListener('input', copyMember);
-    q('#fPi').addEventListener('change', copyMember);
+    const touched = h._touched = h._touched || { v: false };
+    touched.v = !!e.patient_name;
+    const copyMember = () => { if (!touched.v && q('#fPi').value === 'member') q('#fPatient').value = q('#fMember').value; };
     const syncCat = () => {
       const nm = q('#fCat').value === 'NM';
       q('#fSt').disabled = nm; if (nm) q('#fSt').value = '';
       q('#stReq').hidden = nm;
       $$('select.input', el).forEach(s => s._sync && s._sync());
     };
-    q('#fCat').addEventListener('change', syncCat); syncCat();
+    if (!h._links) {
+      h._links = true;
+      q('#fPatient').addEventListener('input', () => { touched.v = true; });
+      q('#fMember').addEventListener('input', copyMember);
+      q('#fPi').addEventListener('change', copyMember);
+      q('#fCat').addEventListener('change', syncCat);
+    }
+    syncCat();
     initSignature(el, e.signature);
     if (!h._wired) { h._wired = true; q('#entryForm').addEventListener('submit', (ev) => { ev.preventDefault(); q('#entrySave').click(); }); }
   }
@@ -440,8 +440,6 @@
     if (p.entry_date > today()) return ['fDate', 'The date cannot be in the future.'];
     if (p.entry_date.slice(0, 7) !== L.activeMonth()) return ['fDate', 'The date must be in ' + L.monthLabel(L.activeMonth()) + '. To enter another month, activate it in Monthly Log Sheet.'];
     if (!p.patient_name) return ['fPatient', 'Enter the name of the patient.'];
-    if (p.member_category !== 'NM') {
-    }
     return null;
   }
 
@@ -452,6 +450,14 @@
     const isEdit = !!entry && !asCopy;
     const h = UI.modal({
       title: isEdit ? 'Edit entry' : asCopy ? 'Copy entry' : 'Add entry', headIcon: isEdit ? 'edit' : asCopy ? 'copy' : 'plus', size: '', className: 'modal-entry', persistent: true,
+      beforeClose: (hh) => {
+        if (hh._forceClose || !hh._snap || JSON.stringify(readForm(hh)) === hh._snap) return true;
+        if (hh._asking) return false;
+        hh._asking = true;
+        UI.confirm({ title: 'Discard this entry?', danger: true, confirmText: 'Discard', cancelText: 'Keep editing', iconName: 'alert', message: '<p>You have not saved this entry. If you close now, what you typed will be lost.</p>' })
+          .then((go) => { hh._asking = false; if (go) { hh._forceClose = true; hh.close(); } });
+        return false;
+      },
       body: formHTML(e),
       footer: isEdit
         ? [{ label: 'Cancel', className: 'btn-ghost' }, { id: 'entrySave', label: 'Save changes', className: 'btn-primary', onClick: (hh, b) => save(hh, b, entry, false) }]
@@ -459,6 +465,7 @@
            { id: 'entrySave', label: 'Save entry', className: 'btn-primary', onClick: (hh, b) => save(hh, b, null, false) }]
     });
     wireForm(h, e);
+	h._snap = JSON.stringify(readForm(h));
   }
 
   async function save(h, btn, entry, another) {
@@ -475,11 +482,13 @@
       if (entry) { await API.entries.update(entry.id, p); sigCache.delete(entry.id); UI.toast('Entry updated.', 'success'); }
       else { await API.entries.create({ ...p, created_by: ctx.user.id }); UI.toast('Entry saved.', 'success'); }
       await load(true);
+      h._forceClose = !another;
       if (another) {
         const f = $('#entryForm', h.el); f.reset();
         $('#fPatient', h.el).focus(); h.body.scrollTo({ top: 0 });
         wireForm(h, { entry_date: p.entry_date, hospital_id: p.hospital_id, hospital_name: p.hospital_name });
         $('#fDate', h.el).value = p.entry_date; $('#fDate', h.el)._sync();
+		h._snap = JSON.stringify(readForm(h));
         setBusy(btn, false);
         return false;
       }
@@ -492,7 +501,7 @@
     const e = state.all.find(x => x.id === id); if (!e) return;
     const ok = await UI.confirm({
       title: 'Delete this entry?', danger: true, confirmText: 'Delete entry', iconName: 'trash',
-      message: `<p>Below item will be removed.</p>
+      message: `<p>This entry will be removed.</p>
         <p style="margin-bottom:.12rem"><strong>${esc(e.patient_name || e.client_name || 'This entry')}</strong></p>
         <p style="margin-bottom:.12rem">Hospital: ${esc(e.hospital_name || '')}</p>
         <p>Date entered: ${esc(L.fmtDate(e.entry_date, 'long'))}</p>
@@ -679,7 +688,15 @@
 
   /* ============================== events ============================== */
   const resetPage = () => { state.page = 1; renderAll(); };
-  $('#fHosp').addEventListener('change', (e) => { state.filter.hospital = e.target.value; resetPage(); });
+    $('#fHospFilter').addEventListener('click', () => {
+    const opts = [{ id: '', name: 'All hospitals' }, ...hospitalsWithData()], cur = state.filter.hospital;
+    const m = UI.modal({
+      title: 'Hospital', headIcon: 'building', size: 'sm', className: 'modal-picker',
+      body: `<ul class="pick-list" role="radiogroup">${opts.map((o, i) => `<li><label class="pick-item ${o.id === cur ? 'is-selected' : ''}"><input type="radio" name="hf" value="${i}" ${o.id === cur ? 'checked' : ''}><span class="radio-dot" aria-hidden="true"></span><span class="pick-name">${esc(o.name)}</span></label></li>`).join('')}</ul>`,
+      footer: [{ label: 'Cancel', className: 'btn-ghost' }]
+    });
+    $('.pick-list', m.el).addEventListener('change', (ev) => { state.filter.hospital = opts[+ev.target.value].id; setTimeout(() => m.close(), 140); resetPage(); });
+  });
   $('#fFrom').addEventListener('change', (e) => { state.filter.from = e.target.value; resetPage(); });
   $('#fTo').addEventListener('change', (e) => { state.filter.to = e.target.value; resetPage(); });
   UI.datePicker($('#fFrom'), { placeholder: 'Any date' });

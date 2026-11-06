@@ -214,13 +214,7 @@
   }
 
   /* ---------- inquiries ---------- */
-  function inqList() {
-    try {
-      const v = S.settings.inquiries, a = typeof v === 'string' ? JSON.parse(v) : v;
-      if (Array.isArray(a)) return a.filter(x => typeof x === 'string' && x.trim());
-    } catch (e) {}
-    return ['DOC REQUIREMENT', 'ADD DEPENDENT', 'PHIC ELIGIBILITY'];
-  }
+  const inqList = () => L.inquiryList(S.settings);
   async function saveInq(next, msg) {
     try { await API.settings.set('inquiries', JSON.stringify(next)); S.settings = await API.settings.all(); UI.toast(msg, 'success'); }
     catch (e) { UI.toast(e.message, 'error', 5000); }
@@ -247,7 +241,7 @@
     $$('[data-iedit]', box).forEach(b => b.addEventListener('click', () => {
       const i = +b.dataset.iedit;
       UI.modal({ title: 'Edit inquiry', headIcon: 'edit', size: 'sm',
-        body: `<div class="field"><label class="label" for="inqEdit">Nature of inquiry</label><input class="input" id="inqEdit" maxlength="80" value="${esc(list[i])}"></div>`,
+        body: `<div class="field"><label class="label" for="inqEdit">Nature of inquiry</label><input class="input" id="inqEdit" maxlength="80" value="${esc(list[i])}"></div><p class="help">Entries already saved under the old name will no longer be counted in the Nature of Inquiry report. Rename only to fix a typing mistake.</p>`,
         footer: [{ label: 'Cancel', className: 'btn-ghost' }, { label: 'Save', className: 'btn-primary', onClick: (h) => {
           const v = $('#inqEdit', h.el).value.trim();
           if (!v) { UI.flagInput($('#inqEdit', h.el)); return false; }
@@ -257,7 +251,7 @@
     }));
     $$('[data-idel]', box).forEach(b => b.addEventListener('click', async () => {
       const i = +b.dataset.idel;
-      if (await UI.confirm({ title: 'Remove this inquiry?', danger: true, confirmText: 'Remove', iconName: 'trash', message: `<p><strong>${esc(list[i])}</strong> will no longer appear in the list. Entries already saved are not changed.</p>` }))
+      if (await UI.confirm({ title: 'Remove this inquiry?', danger: true, confirmText: 'Remove', iconName: 'trash', message: `<p><strong>${esc(list[i])}</strong> will no longer appear in the list. Entries already saved with it will also stop being counted in the Nature of Inquiry report.</p>` }))
         saveInq(list.filter((x, j) => j !== i), 'Inquiry removed.');
     }));
   }

@@ -30,8 +30,8 @@
           </section>
           <section class="card card-pad">
             <h3 style="margin-bottom:.2rem">Your data</h3>
-            <p class="muted small">Your entries are saved as files on this laptop, in the <strong>C:\\Temp\\PCares</strong> folder (with <strong>data</strong> and <strong>backup</strong> in it). A backup is made automatically once a day. Keep the folder and backups safe: they contain patient details.</p>
-            <dl class="kv" style="margin-bottom:1rem;grid-template-columns:auto 1fr"><dt>Folder</dt><dd id="fsName">C:\\Temp\\PCares</dd></dl>
+            <p class="muted small">Your entries are saved as files on this laptop, in the <strong>C:\\PCares</strong> folder (with <strong>data</strong> and <strong>backup</strong> in it). A backup is made automatically once a day. Keep the folder and backups safe: they contain patient details.</p>
+            <dl class="kv" style="margin-bottom:1rem;grid-template-columns:auto 1fr"><dt>Folder</dt><dd id="fsName">C:\\PCares</dd></dl>
             <div class="row">
               <button class="btn btn-ghost btn-sm" id="fsBackup">${icon('download', 16)}<span>Back up now</span></button>
               <button class="btn btn-ghost btn-sm" id="fsRestore">${icon('refresh', 16)}<span>Restore backup</span></button>
@@ -78,7 +78,7 @@
 
     $('#fsBackup').addEventListener('click', async (e) => {
       const b = e.currentTarget;
-      const go = await UI.confirm({ title: 'Back up now?', confirmText: 'Back up now', iconName: 'download', message: '<p>A copy of all your entries, signatures and typed report numbers will be saved in the backup folder (C:\\Temp\\PCares\\backup).</p>' });
+      const go = await UI.confirm({ title: 'Back up now?', confirmText: 'Back up now', iconName: 'download', message: '<p>A copy of all your entries, signatures and typed report numbers will be saved in the backup folder (C:\\PCares\\backup).</p>' });
       if (!go) return;
       setBusy(b, true, 'Backing up');
       try { const name = await API.files.backupNow(); UI.toast('Backup saved: ' + name, 'success', 6000); }
@@ -100,11 +100,11 @@
       const box = $('#pwAlert'); hideAlert(box);
       const cur = $('#curPw').value, a = $('#newPw').value, b = $('#newPw2').value;
       if (!cur) return showAlert(box, 'Enter your current password.');
-      if (a.length < 8) return showAlert(box, 'The new password must be at least 8 characters.');
+      const pwBad = Logic.passwordProblem(a); if (pwBad) return showAlert(box, pwBad);
       if (a === cur) return showAlert(box, 'Choose a password that is different from the current one.');
       if (a !== b) return showAlert(box, 'The new passwords do not match.');
       const btn = $('#pwBtn'); setBusy(btn, true, 'Updating');
-      try { await API.changePassword(profile.email, cur, a); $('#pwForm').reset(); showAlert(box, 'Password updated.', 'success'); UI.toast('Password updated.', 'success'); }
+      try { await API.changePassword(profile.username, cur, a); $('#pwForm').reset(); showAlert(box, 'Password updated.', 'success'); UI.toast('Password updated.', 'success'); }
       catch (err) { showAlert(box, err.message); }
       finally { setBusy(btn, false); }
     });

@@ -1,6 +1,6 @@
 # PCaresApp
 
-Desktop web app (Google Chrome or Microsoft Edge on a laptop or desktop) for the daily P-CARES log and report. Supabase handles login and accounts; Vercel hosts the site. Patient entries are saved only as files on the user's laptop, in C:\Temp\PCares.
+Desktop web app (Google Chrome or Microsoft Edge on a laptop or desktop) for the daily P-CARES log and report. Supabase handles login and accounts; Vercel hosts the site. Patient entries are saved only as files on the user's laptop, in C:\PCares.
 
 ## Files
 index.html          splash screen (routes to login or dashboard)
@@ -25,7 +25,7 @@ vercel.json
 Local preview: run PCaresApp.bat, or python3 -m http.server 8000 in this folder.
 
 ## How it works
-- Every entry is saved on the laptop (C:\Temp\PCares\data). A backup is made automatically once a day (Profile > Your data).
+- Every entry is saved on the laptop (C:\PCares\data). A backup is made automatically once a day (Profile > Your data).
 - Log Sheet shows every entry with filters. Export PDF prints Sheet 1 and Sheet 2 for the entries currently shown.
 - Each print-out has a control number (year-month-series). After the PDF downloads, the user confirms the print-out is okay; the control number is then saved on those entries. Printing entries that already have a control number shows a warning.
 
@@ -37,4 +37,4 @@ Local preview: run PCaresApp.bat, or python3 -m http.server 8000 in this folder.
 
 ## Known limits
 - Signature column is left blank in the PDF only when the entry has no signature.
-- Login looks up the email behind a username through a database function, so a guessed username reveals that account's email.
+- Login goes through a secure function that locks the account after 3 wrong passwords. Only an administrator can unlock it.

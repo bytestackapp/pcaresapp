@@ -94,11 +94,26 @@
   const monthLabel = (ym) => new Date(+ym.slice(0, 4), +ym.slice(5, 7) - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const monthBounds = (ym) => [ym + '-01', toStr(new Date(+ym.slice(0, 4), +ym.slice(5, 7), 0))];
 
+    const USERNAME_RE = /^[a-z0-9._]{3,24}$/;
+  const DEFAULT_INQUIRIES = ['DOC REQUIREMENT', 'ADD DEPENDENT', 'PHIC ELIGIBILITY'];
+  function inquiryList(settings) {
+    try {
+      const v = settings && settings.inquiries, a = typeof v === 'string' ? JSON.parse(v) : v;
+      if (Array.isArray(a)) return a.filter(x => typeof x === 'string' && x.trim());
+    } catch (e) {}
+    return DEFAULT_INQUIRIES.slice();
+  }
+  function passwordProblem(p) {
+    if (String(p).length < 8) return 'Password must be at least 8 characters.';
+    if (!(/[a-z]/.test(p) && /[A-Z]/.test(p) && /\d/.test(p))) return 'Password needs an upper case letter, a lower case letter and a number.';
+    return '';
+  }
+  
   window.Logic = {
     CATEGORIES, CAT_CODES, MEMBER_CODES, SERVICES, PCF1_REASONS,
     catByCode: (c) => CATEGORIES.find(x => x.code === c),
     serviceLabel: (k) => (SERVICES.find(x => x.key === k) || {}).label || '',
-    computeSummary, todayStr, parseDate, toStr, addDays, fmtDate,
+    computeSummary, USERNAME_RE, DEFAULT_INQUIRIES, inquiryList, passwordProblem, todayStr, parseDate, toStr, addDays, fmtDate,
     currentMonth, activeMonth, setActiveMonth, monthLabel, monthBounds
   };
 })();

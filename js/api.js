@@ -1,10 +1,10 @@
 /* Data layer: every data call lives here so pages stay simple.
    Supabase = login, profiles, hospitals, settings, notifications.
-   Files on this laptop = all log entries, signatures and daily sheet details, in the folder the user chose:
-     <chosen folder>/data/entries.json       every entry (without signatures)
-     <chosen folder>/data/sheets.json        daily sheet details (control no., OPD class)
-     <chosen folder>/data/signatures/<id>.png
-     <chosen folder>/backup/backup_<date>_<time>.json   automatic daily + manual backups
+   Files on this laptop = all log entries, signatures and daily sheet details, in the folder the user chose (C:\PCares):
+     C:\PCares\data\entries.json       every entry (without signatures)
+     C:\PCares\data\sheets.json        daily sheet details (control no., OPD class)
+     C:\PCares\data\signatures\<id>.png
+     C:\PCares\backup\backup_<date>_<time>.json   automatic daily + manual backups
    Nothing patient-related leaves the laptop. Needs Chrome or Edge. */
 (function () {
   const C = window.APP_CONFIG;
@@ -12,6 +12,7 @@
   const sb = window.supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
   });
+  const ACTIVE_KEY = 'ls_last_active';      // used by the auto-logout timer (see shell.js)
 
   function friendly(err) {
     const m = (err && err.message) || String(err || 'Something went wrong.');
@@ -38,7 +39,9 @@
   const pad = (n) => String(n).padStart(2, '0');
   const stamp = () => { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds()); };
 
-  /* remembers WHICH folder the user picked (just the folder handle, no patient data) */
+  /* remembers WHICH folder the user picked (just the folder handle, no patient data).
+     Saved under "root2" so everyone is asked once to choose the new C:\PCares folder. */
+  const FOLDER_KEY = 'root2';
   function kvDb() {
     return new Promise((res, rej) => {
       const r = indexedDB.open('pcares-fs', 1);
@@ -74,11 +77,10 @@
   async function stat(name) { try { return (await (await S.data.getFileHandle(name)).getFile()).lastModified; } catch (e) { return 0; } }
   const queue = (fn) => { const p = S.queue.then(fn); S.queue = p.catch(() => {}); return p; };
 
-  async function initFolders(root) {
-    const base = root.name === 'PCares' ? root : await root.getDirectoryHandle('PCares', { create: true });   // C:\Temp\PCares
-    S.data = await base.getDirectoryHandle('data', { create: true });          // created automatically if missing
+  async function initFolders(root) {          // root is the C:\PCares folder itself
+    S.data = await root.getDirectoryHandle('data', { create: true });          // created automatically if missing
     S.sigs = await S.data.getDirectoryHandle('signatures', { create: true });
-    S.backup = await base.getDirectoryHandle('backup', { create: true });      // created automatically if missing
+    S.backup = await root.getDirectoryHandle('backup', { create: true });      // created automatically if missing
     S.root = root; S.ready = true; S.loaded = false; S.entries = []; S.sheets = []; S.mE = 0; S.mS = 0;
   }
   async function reload() {
@@ -117,7 +119,7 @@
       const pick = async (h) => {
         try { result = await window.showDirectoryPicker({ id: 'pcares', mode: 'readwrite' }); }
         catch (e) { if (e.name !== 'AbortError') UI.showAlert(UI.$('#fsAlert', h.el), e.message || 'That folder cannot be used. Choose another one.'); return false; }
-        if (!/^(temp|pcares)$/i.test(result.name)) { result = null; UI.showAlert(UI.$('#fsAlert', h.el), 'Please choose the folder named Temp inside the C: drive (C:\\Temp).'); return false; }
+        if (!/^pcares$/i.test(result.name)) { result = null; UI.showAlert(UI.$('#fsAlert', h.el), 'Please choose the folder named PCares on the C: drive (C:\\PCares).'); return false; }
       };
       const footer = [{ label: 'Cancel', className: 'btn-ghost' }];
       if (again) {
@@ -131,7 +133,7 @@
             }
           } catch (e) {}
           needPick = true;
-          UI.showAlert(UI.$('#fsAlert', h.el), 'The data folder could not be opened. Click Allow access again, then choose C:\\Temp (use New folder if it does not exist).'); return false;
+          UI.showAlert(UI.$('#fsAlert', h.el), 'The data folder could not be opened. Click Allow access again, then choose C:\\PCares (use New folder if it does not exist).'); return false;
         } });
       } else footer.push({ label: 'Choose folder', className: 'btn-primary', onClick: (h) => pick(h) });
       UI.modal({
@@ -141,8 +143,8 @@
              <ol style="padding-left:1.2rem;margin:0 0 .75rem"><li>Click <strong>Allow access</strong>.</li><li>A small box from your browser appears at the top. Click <strong>Allow</strong>. If it shows <strong>Allow on every visit</strong>, click that one instead.</li></ol>
              <p class="help">Choosing “Allow on every visit” stops this window from appearing each time you open the app.</p>`
           : `<p>PCaresApp saves your patient entries as files on this laptop, not on the internet.</p>
-             <ol style="padding-left:1.2rem;margin:0 0 .75rem"><li>Click <strong>Choose folder</strong>.</li><li>Open <strong>C:\\Temp</strong> (use <em>New folder</em> if it does not exist) and click <strong>Select Folder</strong>.</li><li>Click <strong>Edit files</strong> to allow it.</li></ol>
-             <p class="help">PCaresApp creates the <strong>PCares</strong> folder inside it, with <strong>data</strong> and <strong>backup</strong> folders in that, by itself.</p>`),
+             <ol style="padding-left:1.2rem;margin:0 0 .75rem"><li>Click <strong>Choose folder</strong>.</li><li>Open the <strong>C:</strong> drive, then open the folder <strong>PCares</strong> (use <em>New folder</em> to create it, named exactly <strong>PCares</strong>, if it does not exist) and click <strong>Select Folder</strong>.</li><li>Click <strong>Edit files</strong> to allow it.</li></ol>
+             <p class="help">PCaresApp creates the <strong>data</strong> and <strong>backup</strong> folders inside <strong>C:\\PCares</strong> by itself.</p>`),
         onClose: () => resolve(result)
       });
     });
@@ -152,7 +154,7 @@
   async function connect() {
     if (!window.showDirectoryPicker) throw new Error('Saving to a folder needs Google Chrome or Microsoft Edge on a laptop or desktop computer.');
     let h = null;
-    try { h = await kvGet('root'); } catch (e) {}
+    try { h = await kvGet(FOLDER_KEY); } catch (e) {}
     if (h) {
       let perm = 'prompt';
       try { perm = await h.queryPermission({ mode: 'readwrite' }); } catch (e) {}
@@ -161,7 +163,7 @@
     const chosen = await askFolder(h);
     if (!chosen) throw new Error('A data folder is needed. Refresh the page and choose a folder to continue.');
     await initFolders(chosen);
-    await kvSet('root', chosen);
+    await kvSet(FOLDER_KEY, chosen);
   }
   function ensure() {
     if (S.ready) return Promise.resolve();
@@ -215,7 +217,7 @@
     try { obj = JSON.parse(await (await (await S.backup.getFileHandle(name)).getFile()).text()); }
     catch (e) { throw new Error('That backup file could not be read. Try an older one.'); }
     if (!obj || obj.app !== 'PCaresApp' || !Array.isArray(obj.entries) || !Array.isArray(obj.sheets)) throw new Error('That backup file is not valid. Try an older one.');
-    try { await makeBackup('before-restore'); } catch (e) {}          // safety copy of what is there now
+    await makeBackup('before-restore');          // safety copy of what is there now; if this fails, nothing is restored
     const sigs = obj.signatures || {};
     for await (const [n] of S.sigs.entries()) { if (!Object.prototype.hasOwnProperty.call(sigs, n.replace(/\.png$/, ''))) { try { await S.sigs.removeEntry(n); } catch (e) {} } }
     for (const id of Object.keys(sigs)) await queue(() => writeFile(S.sigs, id + '.png', dataUrlToBlob(sigs[id])));
@@ -227,7 +229,23 @@
 
   const byDateAsc = (a, b) => String(a.entry_date).localeCompare(b.entry_date) || String(a.created_at).localeCompare(b.created_at);
 
-  const DEFAULT_SETTINGS = { override_enabled: true, override_timeout_min: C.OVERRIDE_TIMEOUT_MIN, announcement: '' };
+  const DEFAULT_SETTINGS = { announcement: '' };
+
+  /* sign-in always goes through the "login" function so wrong passwords are counted and the account can be locked */
+  async function callLogin(username, password) {
+    let res;
+    try {
+      res = await fetch(C.SUPABASE_URL + '/functions/v1/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': C.SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + C.SUPABASE_ANON_KEY },
+        body: JSON.stringify({ username: String(username || '').trim().toLowerCase(), password })
+      });
+    } catch (e) { throw new Error(friendly(e)); }
+    let out = {};
+    try { out = await res.json(); } catch (e) {}
+    if (!res.ok || !out.session) { const err = new Error(out.error || 'Could not sign in. Please try again.'); err.locked = !!out.locked; throw err; }
+    return out.session;
+  }
 
   const API = {
     configured, sb, friendly,
@@ -236,20 +254,10 @@
     async session() { const { data } = await sb.auth.getSession(); return data.session; },
 
     async signIn(username, password) {
-      const uname = String(username || '').trim().toLowerCase();
-      let res;
-      try {
-        res = await fetch(C.SUPABASE_URL + '/functions/v1/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'apikey': C.SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + C.SUPABASE_ANON_KEY },
-          body: JSON.stringify({ username: uname, password })
-        });
-      } catch (e) { throw new Error(friendly(e)); }
-      let out = {};
-      try { out = await res.json(); } catch (e) {}
-      if (!res.ok || !out.session) throw new Error(out.error || 'Could not sign in. Please try again.');
-      const { data, error } = await sb.auth.setSession({ access_token: out.session.access_token, refresh_token: out.session.refresh_token });
+      const session = await callLogin(username, password);
+      const { data, error } = await sb.auth.setSession({ access_token: session.access_token, refresh_token: session.refresh_token });
       fail(error);
+      try { localStorage.setItem(ACTIVE_KEY, String(Date.now())); } catch (e) {}
       return data.user;
     },
     async signUp({ email, password, username, full_name, hospital_id, position, contact_no }) {
@@ -264,7 +272,10 @@
       const { data, error } = await sb.rpc('username_available', { p_username: username });
       fail(error); return !!data;
     },
-    async signOut() { try { await sb.auth.signOut(); } catch (e) {} },
+    async signOut() {
+      try { localStorage.removeItem(ACTIVE_KEY); } catch (e) {}
+      try { await sb.auth.signOut(); } catch (e) {}
+    },
     async sendReset(email) {
       const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + C.PATHS.reset });
       fail(error);
@@ -272,9 +283,9 @@
     async setPassword(newPassword) {
       const { error } = await sb.auth.updateUser({ password: newPassword }); fail(error);
     },
-    async changePassword(email, current, next) {
-      const { error: e1 } = await sb.auth.signInWithPassword({ email, password: current });
-      if (e1) throw new Error('Your current password is incorrect.');
+    async changePassword(username, current, next) {
+      try { await callLogin(username, current); }       // checks the current password AND counts wrong tries
+      catch (e) { throw new Error(String(e.message).replace('Incorrect username or password.', 'Your current password is incorrect.')); }
       await API.setPassword(next);
     },
 
@@ -312,7 +323,10 @@
     settings: {
       async all() {
         const { data, error } = await sb.from('app_settings').select('*');
-        if (error) return { ...DEFAULT_SETTINGS };
+        if (error) {
+          if (window.UI) UI.toast('Could not load the latest settings. Default settings are shown for now.', 'warn', 6000);
+          return { ...DEFAULT_SETTINGS };
+        }
         const out = { ...DEFAULT_SETTINGS };
         (data || []).forEach(r => { out[r.key] = r.value; });
         return out;
@@ -422,7 +436,7 @@
     admin: {
       async profiles() { return ok(await sb.from('profiles').select('*').order('created_at', { ascending: false })); },
       async setProfile(id, fields) { return ok(await sb.from('profiles').update(fields).eq('id', id).select().single()); },
-      async deleteUser(id) { const { error } = await sb.rpc('admin_delete_user', { p_id: id }); fail(error); },
+      async deleteUser(id) { const { error } = await sb.rpc('admin_delete_user', { p_id: id }); fail(error); }
     }
   };
 

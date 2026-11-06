@@ -20,7 +20,7 @@
       <!-- Sign in -->
       <section id="panelLogin">
         <div id="loginAlert" class="alert" hidden></div>
-        <form id="loginForm" novalidate onsubmit="return false">
+        <form id="loginForm" novalidate>
           <div class="field">
             <label class="label" for="username">Username</label>
             <input class="input" id="username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Your username" required>
@@ -57,7 +57,7 @@
         <h2 style="font-size:1.2rem;margin-bottom:1.5rem">Reset your password</h2>
         <p class="muted">Enter the email address on your account and we will send you a reset link.</p>
         <div id="forgotAlert" class="alert" hidden></div>
-        <form id="forgotForm" novalidate onsubmit="return false">
+        <form id="forgotForm" novalidate>
           <div class="field" style="margin-top:1rem">
             <label class="label" for="forgotEmail">Email address</label>
             <input class="input" id="forgotEmail" type="email" autocomplete="email" placeholder="you@example.com" required>
@@ -71,7 +71,7 @@
     </div>
   </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="/js/vendor/supabase.min.js"></script>
   <script src="/js/config.js"></script>
   <script src="/js/logic.js"></script>
   <script src="/js/api.js"></script>

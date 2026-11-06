@@ -1,11 +1,17 @@
-/* Splash screen: shows for a few seconds, then goes to the dashboard (valid session) or login. */
+/* Splash screen: shows for a few seconds the first time, a short moment afterwards,
+   then goes to the dashboard (valid session) or login. */
 (async function () {
   const C = window.APP_CONFIG;
   const FADE_MS = 400;
   const start = Date.now();
   const overlay = document.getElementById('splashOverlay');
 
-  overlay.style.setProperty('--splash-ms', C.SPLASH_MS + 'ms');
+  // the full splash is shown once per browser session; later visits are quick
+  let seen = false;
+  try { seen = sessionStorage.getItem('ls_splash_seen') === '1'; sessionStorage.setItem('ls_splash_seen', '1'); } catch (e) {}
+  const SPLASH_MS = seen ? 800 : C.SPLASH_MS;
+
+  overlay.style.setProperty('--splash-ms', SPLASH_MS + 'ms');
   overlay.classList.add('run');
 
   document.title = C.APP_NAME;
@@ -24,7 +30,7 @@
     }
   } catch (e) { /* fall through to login */ }
 
-  const wait = Math.max(0, C.SPLASH_MS - (Date.now() - start));
+  const wait = Math.max(0, SPLASH_MS - (Date.now() - start));
   setTimeout(() => {
     overlay.classList.add('hide');
     setTimeout(() => location.replace(target), FADE_MS);

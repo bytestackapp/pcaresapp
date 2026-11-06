@@ -17,7 +17,8 @@
     rejected: ['Your account request was declined. Please contact your administrator.', 'error'],
     suspended: ['Your account is locked or suspended. Click Support below to message the admin.', 'error'],
     noprofile: ['We could not find a profile for this account. Please contact your administrator.', 'error'],
-    reset: ['Password updated. Sign in with your new password.', 'success']
+    reset: ['Password updated. Sign in with your new password.', 'success'],
+    idle: ['You were signed out because of inactivity. Please sign in again.', 'info']
   };
   if (reason && Object.prototype.hasOwnProperty.call(reasons, reason)) showAlert(alertBox, ...reasons[reason]);
 
@@ -52,6 +53,7 @@
       if (p.status === 'suspended') return bail('Your account is locked or suspended. Click Support below to message the admin.');
       await API.setMyHospital(h.id);
       try { localStorage.setItem('ls_last_hospital', h.id); } catch (e) {}
+      Logic.setActiveMonth(Logic.currentMonth());
       location.replace(C.PATHS.dashboard);
     } catch (err) {
       showAlert(alertBox, err.message);

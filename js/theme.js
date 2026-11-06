@@ -13,4 +13,5 @@
     (mq.addEventListener ? mq.addEventListener.bind(mq, 'change') : mq.addListener.bind(mq))(resolve);
   }
   window.__applyTheme = resolve;
+  document.addEventListener('submit', function (e) { e.preventDefault(); }, true);
 })();

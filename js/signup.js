@@ -5,7 +5,7 @@
   const alertBox = $('#signupAlert');
   if (!API.configured) showAlert(alertBox, 'This app is not connected to Supabase yet. Add your project URL and anon key in js/config.js.', 'warn');
 
-  const unameRe = /^[a-z0-9._]{3,24}$/;
+  const unameRe = Logic.USERNAME_RE; let nameCheckId = 0;
   const strength = (p) => {
     let s = 0; if (p.length >= 8) s++; if (p.length >= 12) s++; if (/[A-Z]/.test(p) && /[a-z]/.test(p)) s++; if (/\d/.test(p)) s++; if (/[^A-Za-z0-9]/.test(p)) s++;
     return Math.min(s, 4);
@@ -24,12 +24,12 @@
     if (!v) { help.textContent = '3–24 characters: letters, numbers, dot or underscore.'; return; }
     if (!unameRe.test(v)) { help.textContent = 'Use 3–24 letters, numbers, dots or underscores.'; help.style.color = 'var(--danger)'; return; }
     try {
-      const free = await API.usernameAvailable(v);
+      const myId = nameCheckId; const free = await API.usernameAvailable(v); if (myId !== nameCheckId) return;
       help.textContent = free ? 'Username is available.' : 'That username is taken.';
       help.style.color = free ? 'var(--primary)' : 'var(--danger)';
     } catch (e) { help.textContent = ''; }
   }, 400);
-  $('#suUsername').addEventListener('input', checkName);
+  $('#suUsername').addEventListener('input', () => { nameCheckId++; checkName(); });
 
   $('#signupForm').addEventListener('submit', async (e) => {
     e.preventDefault(); hideAlert(alertBox);
@@ -42,7 +42,7 @@
     if (!v.full_name) { mark('fullName', 1); err = 'Enter your full name.'; }
     else if (!unameRe.test(v.username)) { mark('suUsername', 1); err = 'Username must be 3–24 letters, numbers, dots or underscores.'; }
     else if (!/^\S+@\S+\.\S+$/.test(v.email)) { mark('suEmail', 1); err = 'Enter a valid email address.'; }
-    else if (v.password.length < 8) { mark('suPassword', 1); err = 'Password must be at least 8 characters.'; }
+    else if (Logic.passwordProblem(v.password)) { mark('suPassword', 1); err = Logic.passwordProblem(v.password); }
     else if (v.password !== v.confirm) { mark('suConfirm', 1); err = 'Passwords do not match.'; }
     if (err) { showAlert(alertBox, err); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
 

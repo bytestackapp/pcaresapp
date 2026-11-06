@@ -32,8 +32,6 @@
     info: '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>',
     refresh: '<polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>',
     help: '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
-    zap: '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
-    clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
     mail: '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>',
     file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
     userCheck: '<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/>',
@@ -232,6 +230,8 @@
   }
 
   /* sliding pill behind tabs / segmented buttons; stretches across, then settles */
+  const pillSyncs = new Set();
+  window.addEventListener('resize', () => { pillSyncs.forEach(p => { if (!p.root.isConnected) pillSyncs.delete(p); else p.sync(false); }); });
   function pill(root, activeSel) {
     let el = root.querySelector(':scope > .pill');
     if (!el) { el = document.createElement('span'); el.className = 'pill'; el.setAttribute('aria-hidden', 'true'); root.prepend(el); }
@@ -250,7 +250,7 @@
       cur = { l, w };
     }
     sync(false);
-    window.addEventListener('resize', () => sync(false));
+    pillSyncs.add({ root, sync });
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => sync(false));
     return { sync };
   }
@@ -352,7 +352,7 @@
     modal({ title: 'Privacy', headIcon: 'lock', size: 'sm', footer: [{ label: 'Close', className: 'btn-primary' }],
       body: `<p><strong>${esc(C.APP_NAME)}</strong> is designed to keep patient information stored locally on your computer.</p>
         <p style="margin-top:20px;font-size:0.9rem"><strong>1. Local Data Storage</strong></p>
-        <p>Patient and member information entered into the app is stored only on your computer, in the C:\\Temp\\PCares folder. This includes signatures, report numbers, and backup files. These records are not uploaded to or stored on the online server.</p>
+        <p>Patient and member information entered into the app is stored only on your computer, in the C:\\PCares folder. This includes signatures, report numbers, and backup files. These records are not uploaded to or stored on the online server.</p>
         <p style="margin-top:20px;font-size:0.9rem"><strong>2. Online Account Information</strong></p>
         <p>The online server stores account-related information only, including your name, username, email address, position, contact number, hospital, and messages sent to the administrator.</p>
         <p>Do not include patient or other sensitive information in messages sent through Support.</p>
