@@ -15,7 +15,7 @@ window.APP_CONFIG = {
   TIMEZONE: 'Asia/Manila',
   ROWS_PER_PAGE: 15,          // rows per printed sheet (matches the paper form)
   SPLASH_MS: 5000,            // minimum time the splash screen stays visible
-  APP_VERSION: '2.0.0',
+  APP_VERSION: '2.1.0',
   IDLE_LOGOUT_MIN: 30,        // sign out after this many minutes of no activity (0 = never)
 
   PATHS: {
