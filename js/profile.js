@@ -30,11 +30,12 @@
           </section>
           <section class="card card-pad">
             <h3 style="margin-bottom:.2rem">Your data</h3>
-            <p class="muted small">Your entries are saved as files on this laptop, in the <strong>C:\\PCares</strong> folder (with <strong>data</strong> and <strong>backup</strong> in it). A backup is made automatically once a day. Keep the folder and backups safe: they contain patient details.</p>
-            <dl class="kv" style="margin-bottom:1rem;grid-template-columns:auto 1fr"><dt>Folder</dt><dd id="fsName">C:\\PCares</dd></dl>
+            <p class="muted small">Your entries are saved as files on this laptop, in the folder you chose during setup (with <strong>data</strong> and <strong>backup</strong> inside it). A backup is made automatically once a day. Keep the folder and backups safe: they contain patient details. For privacy, the browser shows only the folder name, not the full path. Recommended folder name: <strong>PCares</strong>.</p>
+            <dl class="kv" style="margin-bottom:1rem;grid-template-columns:auto 1fr"><dt>Folder name</dt><dd id="fsName">…</dd></dl>
             <div class="row">
               <button class="btn btn-ghost btn-sm" id="fsBackup">${icon('download', 16)}<span>Back up now</span></button>
               <button class="btn btn-ghost btn-sm" id="fsRestore">${icon('refresh', 16)}<span>Restore backup</span></button>
+              <button class="btn btn-ghost btn-sm" id="fsChange">${icon('file', 16)}<span>Change folder</span></button>
             </div>
           </section>
           <section class="card card-pad">
@@ -47,7 +48,7 @@
         <section class="card card-pad" style="align-self:start">
           <h3 style="margin-bottom:.2rem">Change password</h3><p class="muted small">Use at least 8 characters with upper case, lower case and a number.</p>
           <div id="pwAlert" class="alert" hidden></div>
-          <form id="pwForm" novalidate onsubmit="return false">
+          <form id="pwForm" novalidate>
             <div class="field"><label class="label" for="curPw">Current password</label>
               <div class="input-wrap"><input class="input" id="curPw" type="password" autocomplete="current-password"><button type="button" class="toggle-btn" data-pw-toggle="curPw" aria-label="Show password"></button></div></div>
             <div class="field"><label class="label" for="newPw">New password</label>
@@ -78,7 +79,7 @@
 
     $('#fsBackup').addEventListener('click', async (e) => {
       const b = e.currentTarget;
-      const go = await UI.confirm({ title: 'Back up now?', confirmText: 'Back up now', iconName: 'download', message: '<p>A copy of all your entries, signatures and typed report numbers will be saved in the backup folder (C:\\PCares\\backup).</p>' });
+      const go = await UI.confirm({ title: 'Back up now?', confirmText: 'Back up now', iconName: 'download', message: '<p>A copy of all your entries, signatures and typed report numbers will be saved in the backup folder inside your data folder.</p>' });
       if (!go) return;
       setBusy(b, true, 'Backing up');
       try { const name = await API.files.backupNow(); UI.toast('Backup saved: ' + name, 'success', 6000); }
@@ -86,6 +87,21 @@
       finally { setBusy(b, false); }
     });
     $('#fsRestore').addEventListener('click', openRestore);
+
+    API.files.name().then((n) => { $('#fsName').textContent = n || 'Not chosen yet'; });
+    $('#fsChange').addEventListener('click', async (e) => {
+      const b = e.currentTarget;
+      if (!window.showDirectoryPicker) return UI.toast('Changing the folder needs Google Chrome or Microsoft Edge on a laptop or desktop computer.', 'error', 6000);
+      let dest;
+      try { dest = await window.showDirectoryPicker({ id: 'pcares', mode: 'readwrite' }); }
+      catch (err) { if (err.name !== 'AbortError') UI.toast(err.message || 'That folder cannot be used.', 'error', 6000); return; }
+      const go = await UI.confirm({ title: 'Use this folder?', confirmText: 'Copy and switch', iconName: 'refresh', message: '<p>All your entries, signatures, report numbers and backups will be copied to <strong>' + esc(dest.name) + '</strong>, and the app will use that folder from now on.</p><p>The old folder is not deleted. You can delete it yourself after checking that everything works.</p>' });
+      if (!go) return;
+      setBusy(b, true, 'Copying');
+      try { await API.files.switchTo(dest); $('#fsName').textContent = dest.name; UI.toast('Now saving in ' + dest.name + '.', 'success', 6000); }
+      catch (err) { UI.toast(err.message, 'error', 7000); }
+      finally { setBusy(b, false); }
+    });
 
     $('#themeSeg').addEventListener('click', (e) => {
       const b = e.target.closest('[data-t]'); if (!b) return;

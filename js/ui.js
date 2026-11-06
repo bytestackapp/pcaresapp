@@ -352,7 +352,7 @@
     modal({ title: 'Privacy', headIcon: 'lock', size: 'sm', footer: [{ label: 'Close', className: 'btn-primary' }],
       body: `<p><strong>${esc(C.APP_NAME)}</strong> is designed to keep patient information stored locally on your computer.</p>
         <p style="margin-top:20px;font-size:0.9rem"><strong>1. Local Data Storage</strong></p>
-        <p>Patient and member information entered into the app is stored only on your computer, in the C:\\PCares folder. This includes signatures, report numbers, and backup files. These records are not uploaded to or stored on the online server.</p>
+        <p>Patient and member information entered into the app is stored only on your computer, in the data folder you chose during setup. This includes signatures, report numbers, and backup files. These records are not uploaded to or stored on the online server.</p>
         <p style="margin-top:20px;font-size:0.9rem"><strong>2. Online Account Information</strong></p>
         <p>The online server stores account-related information only, including your name, username, email address, position, contact number, hospital, and messages sent to the administrator.</p>
         <p>Do not include patient or other sensitive information in messages sent through Support.</p>

@@ -264,7 +264,8 @@
     cv._clear = () => { g.clearRect(0, 0, cv.width, cv.height); st.ink = false; };
     cv._get = () => st.ink ? cv.toDataURL('image/png') : null;
     cv._clear();
-    if (existing) { const img = new Image(); img.onload = () => { g.drawImage(img, 0, 0, cv.width, cv.height); st.ink = true; }; img.src = existing; }
+    cv._loaded = Promise.resolve();
+    if (existing) { cv._loaded = new Promise((res) => { const img = new Image(); img.onload = () => { g.drawImage(img, 0, 0, cv.width, cv.height); st.ink = true; res(); }; img.onerror = () => res(); img.src = existing; }); }
     cv._setLock = (on) => {
       st.locked = on;
       $('#sigPaste', el).disabled = on; $('#sigClear', el).disabled = on;
@@ -465,7 +466,8 @@
            { id: 'entrySave', label: 'Save entry', className: 'btn-primary', onClick: (hh, b) => save(hh, b, null, false) }]
     });
     wireForm(h, e);
-	h._snap = JSON.stringify(readForm(h));
+    await $('#fSig', h.el)._loaded;
+    h._snap = JSON.stringify(readForm(h));
   }
 
   async function save(h, btn, entry, another) {

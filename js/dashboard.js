@@ -43,7 +43,7 @@
   const days = Array.from({ length: 7 }, (_, i) => L.addDays(today, i - 6));
   const counts = days.map(d => rows.filter(r => r.entry_date === d).length), max = Math.max(1, ...counts);
   $('#week').innerHTML = `<div class="cols" role="img" aria-label="Entries per day for the last 7 days">${days.map((d, i) =>
-    `<div class="col ${d === today ? 'today' : ''}"><b>${counts[i]}</b><div class="col-bar" style="height:${Math.max(3, counts[i] / max * 100)}%"></div><span>${d === today ? 'Today' : L.fmtDate(d, 'day')}</span></div>`).join('')}</div>`;
+    `<div class="col ${d === today ? 'today' : ''}"><b>${counts[i]}</b><div class="col-bar" style="height:${Math.max(3, counts[i] / max * 75)}%"></div><span>${d === today ? 'Today' : L.fmtDate(d, 'day')}</span></div>`).join('')}</div>`;
 
   // categories today
   const cc = Object.fromEntries(L.CAT_CODES.map(c => [c, todays.filter(e => e.member_category === c).length]));

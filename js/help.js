@@ -8,7 +8,7 @@
   const FAQ = [
     ['How do I add an entry?', 'Open Log Sheet and click Add entry. Fill in the client details, choose the member category, then click Save entry. Use Save and add another to enter several clients in a row.'],
     ['I cannot choose a date from an earlier month.', 'The Log Sheet shows one month at a time, and dates cannot be in the future. Go to Monthly Log Sheet, click Activate on the month you need, then add or view entries in the Log Sheet.'],
-    ['Where are my entries saved?', 'On this laptop only, in the C:\\PCares folder. Nothing patient-related is sent to the internet.'],
+    ['Where are my entries saved?', 'On this laptop only, in the folder you chose during setup. Nothing patient-related is sent to the internet.'],
     ['How do I back up my data?', 'Go to Profile, then Your data, then click Back up now. A backup is also made automatically once a day. Please also copy the backup folder to another drive or USB from time to time.'],
     ['How do I restore a backup?', 'Go to Profile, then Your data, then click Restore backup and choose a backup from the list. Your current data is saved first, then replaced by the backup you choose. All months are restored together, not one month only.'],
     ['I see a message that the app lost access to the data folder.', 'Refresh the page (Ctrl+F5), then click Allow access when asked. Use Google Chrome or Microsoft Edge on a laptop or desktop.'],

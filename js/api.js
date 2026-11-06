@@ -40,7 +40,7 @@
   const stamp = () => { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds()); };
 
   /* remembers WHICH folder the user picked (just the folder handle, no patient data).
-     Saved under "root2" so everyone is asked once to choose the new C:\PCares folder. */
+     Saved under "root2" so everyone is asked once to choose their data folder. */
   const FOLDER_KEY = 'root2';
   function kvDb() {
     return new Promise((res, rej) => {
@@ -77,7 +77,7 @@
   async function stat(name) { try { return (await (await S.data.getFileHandle(name)).getFile()).lastModified; } catch (e) { return 0; } }
   const queue = (fn) => { const p = S.queue.then(fn); S.queue = p.catch(() => {}); return p; };
 
-  async function initFolders(root) {          // root is the C:\PCares folder itself
+  async function initFolders(root) {          // root is the data folder the user chose
     S.data = await root.getDirectoryHandle('data', { create: true });          // created automatically if missing
     S.sigs = await S.data.getDirectoryHandle('signatures', { create: true });
     S.backup = await root.getDirectoryHandle('backup', { create: true });      // created automatically if missing
@@ -119,7 +119,6 @@
       const pick = async (h) => {
         try { result = await window.showDirectoryPicker({ id: 'pcares', mode: 'readwrite' }); }
         catch (e) { if (e.name !== 'AbortError') UI.showAlert(UI.$('#fsAlert', h.el), e.message || 'That folder cannot be used. Choose another one.'); return false; }
-        if (!/^pcares$/i.test(result.name)) { result = null; UI.showAlert(UI.$('#fsAlert', h.el), 'Please choose the folder named PCares on the C: drive (C:\\PCares).'); return false; }
       };
       const footer = [{ label: 'Cancel', className: 'btn-ghost' }];
       if (again) {
@@ -133,7 +132,7 @@
             }
           } catch (e) {}
           needPick = true;
-          UI.showAlert(UI.$('#fsAlert', h.el), 'The data folder could not be opened. Click Allow access again, then choose C:\\PCares (use New folder if it does not exist).'); return false;
+          UI.showAlert(UI.$('#fsAlert', h.el), 'The data folder could not be opened. Click Allow access again, then choose your data folder (use New folder if it does not exist).'); return false;
         } });
       } else footer.push({ label: 'Choose folder', className: 'btn-primary', onClick: (h) => pick(h) });
       UI.modal({
@@ -143,8 +142,8 @@
              <ol style="padding-left:1.2rem;margin:0 0 .75rem"><li>Click <strong>Allow access</strong>.</li><li>A small box from your browser appears at the top. Click <strong>Allow</strong>. If it shows <strong>Allow on every visit</strong>, click that one instead.</li></ol>
              <p class="help">Choosing “Allow on every visit” stops this window from appearing each time you open the app.</p>`
           : `<p>PCaresApp saves your patient entries as files on this laptop, not on the internet.</p>
-             <ol style="padding-left:1.2rem;margin:0 0 .75rem"><li>Click <strong>Choose folder</strong>.</li><li>Open the <strong>C:</strong> drive, then open the folder <strong>PCares</strong> (use <em>New folder</em> to create it, named exactly <strong>PCares</strong>, if it does not exist) and click <strong>Select Folder</strong>.</li><li>Click <strong>Edit files</strong> to allow it.</li></ol>
-             <p class="help">PCaresApp creates the <strong>data</strong> and <strong>backup</strong> folders inside <strong>C:\\PCares</strong> by itself.</p>`),
+             <ol style="padding-left:1.2rem;margin:0 0 .75rem"><li>Click <strong>Choose folder</strong>.</li><li>Pick any drive you can write to (for example <strong>D:</strong>), use <em>New folder</em> to create a folder named <strong>PCares</strong> (recommended folder name), open it and click <strong>Select Folder</strong>.</li><li>Click <strong>Edit files</strong> to allow it.</li></ol>
+             <p class="help">Do not choose a drive root (like D:\\) or Documents/Desktop; the browser refuses those. PCaresApp creates the <strong>data</strong> and <strong>backup</strong> folders inside your folder by itself.</p>`),
         onClose: () => resolve(result)
       });
     });
@@ -405,7 +404,34 @@
     files: {
       async backupNow() { await ensure(); return makeBackup('backup'); },
       async listBackups() { await ensure(); return listBackups(); },
-      async restore(name) { await ensure(); return restoreBackup(name); }
+      async restore(name) { await ensure(); return restoreBackup(name); },
+      async name() { try { const h = await kvGet(FOLDER_KEY); return h ? h.name : ''; } catch (e) { return ''; } },
+      async switchTo(dest) {
+        await ensure();
+        if (await dest.isSameEntry(S.root)) throw new Error('That is the folder you are already using. Choose a different one.');
+        if (await S.root.resolve(dest) || await dest.resolve(S.root)) throw new Error('Choose a folder that is not inside the current data folder, and not one that contains it.');
+        const dData = await dest.getDirectoryHandle('data', { create: true });
+        try {
+          await dData.getFileHandle('entries.json');
+          throw Object.assign(new Error('That folder already contains PCaresApp data. Choose an empty folder.'), { stop: true });
+        } catch (e) { if (e.stop) throw e; }
+        const dSigs = await dData.getDirectoryHandle('signatures', { create: true });
+        const dBackup = await dest.getDirectoryHandle('backup', { create: true });
+        await refresh();
+        await writeFile(dData, 'entries.json', JSON.stringify({ version: 1, entries: S.entries }));
+        await writeFile(dData, 'sheets.json', JSON.stringify({ version: 1, sheets: S.sheets }));
+        for (const e of S.entries) {
+          if (!e.has_signature) continue;
+          try { await writeFile(dSigs, e.id + '.png', await (await S.sigs.getFileHandle(e.id + '.png')).getFile()); } catch (x) {}
+        }
+        for await (const [name, fh] of S.backup.entries()) {
+          if (fh.kind !== 'file' || !name.endsWith('.json')) continue;
+          await writeFile(dBackup, name, await fh.getFile());
+        }
+        await kvSet(FOLDER_KEY, dest);
+        await initFolders(dest);
+        await reload();
+      }
     },
 
     /* ---------- notifications ---------- */
