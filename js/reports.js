@@ -255,7 +255,7 @@
       <div class="table-wrap rpt-wrap"><table class="rpt-table" id="rptDaily">${head('Day')}<tbody>${dayRowsHtml(rows, man)}</tbody><tfoot id="rptFoot"></tfoot></table></div>
       <div class="table-wrap rpt-wrap" id="rptHci"></div>`;
 
-    const setEditing = (on) => { editing = on; $$('input[data-k]', body).forEach(i => { i.disabled = !on; }); $$('button[data-note]', body).forEach(i => { i.disabled = !on; }); };
+    const setEditing = (on) => { editing = on; body.classList.toggle('is-editing', on); $$('input[data-k]', body).forEach(i => { i.disabled = !on; }); $$('button[data-note]', body).forEach(i => { i.disabled = !on; }); };
     function refresh() {
       const t = totals(rows, man);
       $('#rptFoot', body).innerHTML = totRowHtml('GRAND TOTAL', t.grand);

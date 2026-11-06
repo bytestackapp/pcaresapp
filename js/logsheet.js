@@ -539,7 +539,7 @@
   /* ============================== export ============================== */
   async function openExportModal() {
     if (!state.view.length) { UI.toast('There are no entries to export.', 'error'); return; }
-    const ym = L.activeMonth(), FIELD = { n: 'opdN', c: 'opdC', p: 'ppff' };
+    const ym = L.activeMonth(), FIELD = { x: 'copay', n: 'opdN', c: 'opdC', p: 'ppff' };
     let man, editing = false;
     try { man = await API.reportManual.get(ym); } catch (e) { UI.toast(e.message, 'error', 5000); return; }
     const m = new Map();
@@ -553,7 +553,7 @@
     const rowsHtml = gs.map(g => `<tr>
         <td class="nowrap"><strong>${esc(L.fmtDate(g.date))}</strong></td>
         ${multiH ? `<td>${esc(g.hospital)}</td>` : ''}
-        <td>${inp(g, 'n')}</td><td>${inp(g, 'c')}</td><td>${inp(g, 'p')}</td></tr>`).join('');
+        <td>${inp(g, 'x')}</td><td>${inp(g, 'n')}</td><td>${inp(g, 'c')}</td><td>${inp(g, 'p')}</td></tr>`).join('');
     const setEditing = (h, on) => { editing = on; h.el.querySelectorAll('input[data-g]').forEach(i => { i.disabled = !on; }); };
     const saveNow = UI.debounce(async () => {
       try { await API.reportManual.set(ym, JSON.parse(JSON.stringify(man))); }
@@ -565,7 +565,7 @@
         <p class="help" style="margin-bottom:.8rem">${gs.length} sheet${gs.length === 1 ? '' : 's'} will be exported. Each page gets its own control no. (year-month-series), starting at 01 every month. Press Edit to change the numbers. They are saved automatically.</p>
         <div class="table-wrap exp-wrap"><table class="tbl exp-table"><thead><tr>
           <th>Date entered</th>${multiH ? '<th>Hospital</th>' : ''}
-          <th>No. of times OPD class is conducted</th><th>No. of clients served during OPD class</th><th>Total No. of PPFF administered</th>
+          <th>NO CO-PAY</th><th>No. of times OPD class is conducted</th><th>No. of clients served during OPD class</th><th>Total No. of PPFF administered</th>
         </tr></thead><tbody>${rowsHtml}</tbody></table></div>`,
       footer: [
         { label: 'Cancel', className: 'btn-ghost' },

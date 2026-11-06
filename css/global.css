@@ -688,7 +688,8 @@ input[type="password"]::-webkit-credentials-auto-fill-button { visibility: hidde
 .rpt-table .c-day { min-width: 2.4rem; }
 .rpt-table .c-hci { min-width: 4.2rem; white-space: nowrap; }
 .rpt-table td.tot { font-weight: 600; background: var(--surface-2); }
-.rpt-table td.in { padding: 0; min-width: 3.6rem; width: 3.6rem; background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 4%, var(--surface)), color-mix(in srgb, var(--primary) 16%, var(--surface))); }
+.rpt-table td.in { padding: 0; min-width: 3.6rem; width: 3.6rem; }
+.is-editing .rpt-table td.in { background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 4%, var(--surface)), color-mix(in srgb, var(--primary) 16%, var(--surface))); }
 .rpt-table td.in input { width: 100%; min-width: 0; border: 0; background: transparent; color: var(--text); font: inherit; text-align: center; padding: .28rem .3rem; -moz-appearance: textfield; }
 .rpt-table td.in input::-webkit-outer-spin-button, .rpt-table td.in input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .rpt-table td.in input:disabled { color: var(--text); -webkit-text-fill-color: var(--text); opacity: 1; cursor: default; }
@@ -764,7 +765,7 @@ input[type="password"]::-webkit-credentials-auto-fill-button { visibility: hidde
 .exp-table td { padding: .5rem .6rem; }
 .exp-table td .input { text-align: center; min-height: 34px; min-width: 56px; width: 100%; padding: .35rem .4rem; }
 .exp-table th { font-size: .72rem; padding: .55rem .5rem; }
-.modal.modal-export { max-width: 620px; }
+.modal.modal-export { max-width: 760px; }
 .exp-table td:not(:first-child) { text-align: center; }
 
 /* footer */
