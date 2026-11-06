@@ -16,7 +16,7 @@ window.APP_CONFIG = {
   ROWS_PER_PAGE: 15,          // rows per printed sheet (matches the paper form)
   SPLASH_MS: 5000,            // minimum time the splash screen stays visible
   APP_VERSION: '2.1.1',
-  IDLE_LOGOUT_MIN: 30,        // sign out after this many minutes of no activity (0 = never)
+  IDLE_LOGOUT_MIN: 480,        // sign out after this many minutes of no activity (0 = never)
 
   PATHS: {
     login:     '/public/login.html',
